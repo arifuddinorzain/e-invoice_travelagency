@@ -22,17 +22,6 @@ body {
     flex-shrink: 0;
 }
 
-.form-section input,
-.form-section textarea,
-.form-section select {
-    width: 100%;
-    padding: 10px;
-    box-sizing: border-box;
-    margin-top: 5px;
-    margin-bottom: 15px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-}
 
 .preview-section {
     flex: 1;
@@ -88,7 +77,7 @@ body {
     width: 35%;
     background: #0d1b32;
     color: white;
-    padding: 40px 30px;
+    padding: 40px 30px 40px 50px;
     border-bottom-left-radius: 80px;
     box-sizing: border-box;
     border-left: 10px solid #EF6C00;
@@ -313,4 +302,24 @@ body {
     .form-section { display: none; }
     .preview-section { transform: none; width: 100%; }
     .invoice { box-shadow: none; margin: 0; }
+}
+/* Social Media Section */
+#socialSection{
+    margin:10px 0 20px 0;
+    border:1px solid #ccc;
+    border-radius:4px;
+    background:#fafafa;
+}
+#socialSection summary{
+    padding:10px 15px;
+    cursor:pointer;
+    font-weight:600;
+    border-bottom: 1px solid #ccc;
+}
+#socialTable td {
+    padding: 10px;
+    border: none;
+}
+#socialTable {
+    width: 100%;
 }
