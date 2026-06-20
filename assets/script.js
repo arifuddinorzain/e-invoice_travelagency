@@ -240,14 +240,23 @@ function downloadPDF(){
                 const clonedInvoice = clonedDoc.getElementById('invoiceToDownload');
                 clonedInvoice.style.width = '794px';
                 clonedInvoice.style.maxWidth = '794px';
-                clonedInvoice.style.minHeight = '1123px'; // A4 height
+                clonedInvoice.style.minHeight = 'auto'; // Let content dictate height to prevent blank page spill
+                clonedInvoice.style.height = 'auto';
                 clonedInvoice.style.margin = '0';
                 clonedInvoice.style.padding = '0';
+                clonedInvoice.style.boxShadow = 'none'; // Remove shadow to prevent bleed
+                clonedInvoice.style.border = 'none';
                 
-                // Set explicit font size root if zoom affected it
+                
+                // Ensure body/html have no extra space causing blank pages
+                clonedDoc.body.style.margin = '0';
+                clonedDoc.body.style.padding = '0';
+                clonedDoc.documentElement.style.margin = '0';
+                clonedDoc.documentElement.style.padding = '0';
                 clonedDoc.documentElement.style.fontSize = '16px';
             }
         },
+        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     }).from(invoice).save();
 }

@@ -39,7 +39,7 @@ body {
 /* INVOICE DESIGN */
 .invoice {
     width: 210mm;
-    min-height: 297mm;
+    min-height: auto;
     background: white;
     padding: 0;
     position: relative;
