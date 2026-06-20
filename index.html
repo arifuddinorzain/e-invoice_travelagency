@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Invoice Generator</title>
+    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- FORM -->
+    <div class="form-section">
+        <h2>Company Details</h2>
+        <label>Company Logo</label>
+        <input type="file" id="logoUpload" accept="image/*">
+        
+        <label>Company Name</label>
+        <input type="text" id="companyName" value="Zippy Travel Sdn Bhd">
+
+        <label>Company Address</label>
+        <textarea id="companyAddress">No 2, Jalan 4/5 Taman Muhibbah,
+48000 Rawang, Selangor</textarea>
+        
+        <label>Phone</label>
+        <input type="text" id="companyPhone" value="03-1234 5678">
+        <label>Email</label>
+        <input type="text" id="companyEmail" value="info@zippytravel.com">
+        <label>Website</label>
+        <input type="text" id="companyWebsite" value="www.zippytravel.com">
+        <label>Facebook</label>
+        <input type="text" id="companyFb" value="Zippy Travel">
+
+        <hr>
+        <h2>Invoice Info</h2>
+        <label>Invoice No</label>
+        <input type="text" id="invoiceNo" value="INV-52148">
+        <label>Date</label>
+        <input type="date" id="invoiceDate">
+        <label>Due Date</label>
+        <input type="date" id="dueDate">
+        
+        <hr>
+        <h2>Customer (Bill To)</h2>
+        <label>Customer Name</label>
+        <input type="text" id="customerName" value="MASHITAH BINTI MUSTAPHA">
+        <label>Customer Address</label>
+        <textarea id="customerAddress">NO 2, JALAN 4/5 TAMAN MUHIBBAH
+48000 RAWANG SELANGOR</textarea>
+        <label>Social / Ref</label>
+        <input type="text" id="customerSocial" value="wad">
+
+        <hr>
+        <h2>Trip Details</h2>
+        <label>Nama Trip</label>
+        <input type="text" id="tripName" value="Da Lat 5H4M">
+        <label>Tarikh Travel</label>
+        <input type="text" id="tripDate" value="10 - 14 Julai 2026">
+        <label>Bilangan Pax</label>
+        <input type="text" id="tripPax" value="4 Pax">
+        <label>Sales Consultant</label>
+        <input type="text" id="tripConsultant" value="Shahrul">
+
+        <hr>
+        <h2>Meta Info</h2>
+        <label>Group Size</label>
+        <input type="text" id="groupSize" value="1">
+        <label>Payment Terms</label>
+        <input type="text" id="paymentTerms" value="23">
+        <label>Mode of Payment</label>
+        <select id="paymentMode">
+            <option>Credit Card</option>
+            <option>Bank Transfer</option>
+            <option>Cash</option>
+        </select>
+
+        <hr>
+        <h2>Items (Packages)</h2>
+        <table id="itemsTable">
+            <tbody id="invoiceItems"></tbody>
+        </table>
+        <button onclick="addRow('invoiceItems')">+ Add Package</button>
+
+        <hr>
+        <h2>Add-On / Services</h2>
+        <table id="addonsTable">
+            <tbody id="addonItems"></tbody>
+        </table>
+        <button onclick="addRow('addonItems')">+ Add Add-on</button>
+
+        <hr>
+        <h2>Payment</h2>
+        <label>Deposit Paid (RM)</label>
+        <input type="number" id="depositPaid" value="1000.00">
+        <label>Tax (%)</label>
+        <input type="number" id="tax" value="8">
+
+        <br><br>
+        <button onclick="downloadPDF()" style="background:#EF6C00;color:white;width:100%">Download PDF</button>
+    </div>
+
+    <!-- PREVIEW -->
+    <div id="pdfArea">
+        <div class="preview-scale">
+            <div class="preview-section" id="preview-section">
+                <div class="invoice" id="invoiceToDownload">
+
+                    <!-- Header -->
+                    <div class="header-banner">
+                        <div class="header-left">
+                            <img id="previewLogo" src="" style="display:none; max-width:200px;">
+                        </div>
+                        <div class="header-center">
+                            <div class="contact-item"><i class="fa-solid fa-location-dot"></i> <span id="p_cNameAddress"></span></div>
+                            <div class="contact-item"><i class="fa-solid fa-phone"></i> <span id="p_cPhone"></span></div>
+                            <div class="contact-item"><i class="fa-solid fa-envelope"></i> <span id="p_cEmail"></span></div>
+                            <div class="contact-item"><i class="fa-solid fa-globe"></i> <span id="p_cWeb"></span></div>
+                            <div class="contact-item"><i class="fa-brands fa-facebook"></i> <span id="p_cFb"></span></div>
+                        </div>
+                        <div class="header-right">
+                            <h1>INVOICE</h1>
+                            <p class="lbl">Invoice No.</p>
+                            <p class="val-orange" id="p_invNo"></p>
+                            <p class="lbl">Date</p>
+                            <p class="val-white" id="p_invDate"></p>
+                            <p class="lbl">Due Date</p>
+                            <p class="val-white" id="p_invDue"></p>
+                        </div>
+                    </div>
+
+                    <!-- Middle 2 columns -->
+                    <div class="grid-2col">
+                        <!-- Bill To -->
+                        <div class="box-section">
+                            <div class="box-title">BILL TO</div>
+                            <h3 id="p_custName"></h3>
+                            <p id="p_custAddr"></p>
+                            <p><i class="fa-brands fa-facebook"></i> <span id="p_custSoc"></span></p>
+                        </div>
+                        <!-- Trip Details -->
+                        <div class="box-section">
+                            <div class="box-title">TRIP DETAILS</div>
+                            <table class="trip-table">
+                                <tr><td><i class="fa-solid fa-suitcase"></i> Nama Trip</td><td id="p_tripName"></td></tr>
+                                <tr><td><i class="fa-regular fa-calendar"></i> Tarikh Travel</td><td id="p_tripDate"></td></tr>
+                                <tr><td><i class="fa-solid fa-users"></i> Bilangan Pax</td><td id="p_tripPax"></td></tr>
+                                <tr><td><i class="fa-solid fa-user-tie"></i> Sales Consultant</td><td id="p_tripCons"></td></tr>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Meta Bar -->
+                    <div class="meta-bar">
+                        <div><i class="fa-solid fa-user"></i> <span>Sales Agent<br><b id="m_agent"></b></span></div>
+                        <div><i class="fa-solid fa-users"></i> <span>Group Size<br><b id="m_size"></b></span></div>
+                        <div><i class="fa-solid fa-file-invoice"></i> <span>Payment Terms<br><b id="m_terms"></b></span></div>
+                        <div><i class="fa-solid fa-credit-card"></i> <span>Mode of Payment<br><b id="m_mode"></b></span></div>
+                        <div><i class="fa-solid fa-calendar-days"></i> <span>Due Date<br><b id="m_due"></b></span></div>
+                    </div>
+
+                    <!-- Items Table -->
+                    <table class="main-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>DESCRIPTION</th>
+                                <th>QTY</th>
+                                <th>UNIT PRICE (RM)</th>
+                                <th>TOTAL (RM)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="p_items">
+                            <!-- Filled by JS -->
+                        </tbody>
+                    </table>
+
+                    <!-- Summary -->
+                    <div class="summary-area">
+                        <div class="payment-summary">
+                            <div class="sum-title"><i class="fa-solid fa-credit-card"></i> PAYMENT SUMMARY</div>
+                            <div class="sum-row"><span>Package Total</span><span id="s_pkgTot">RM 0.00</span></div>
+                            <div class="sum-row orange"><span>Deposit Paid</span><span id="s_dep">RM 0.00</span></div>
+                            <div class="sum-balance"><span>BALANCE DUE</span><span id="s_bal">RM 0.00</span></div>
+                        </div>
+                        <div class="total-summary">
+                            <div class="sum-row"><span>Subtotal</span><span id="s_sub">RM 0.00</span></div>
+                            <div class="sum-row"><span>Tax (SST <span id="s_taxPct">0</span>%)</span><span id="s_taxVal">RM 0.00</span></div>
+                            <div class="grand-total"><span>TOTAL AMOUNT</span><span id="s_grand">RM 0.00</span></div>
+                        </div>
+                    </div>
+
+                    <!-- T&C -->
+                    <div class="tc-area">
+                        <h4><i class="fa-regular fa-file-lines"></i> TERMS & CONDITIONS</h4>
+                        <ul>
+                            <li>Deposit tidak boleh dipulangkan selepas pengesahan tempahan dibuat.</li>
+                            <li>Sebarang perubahan tarikh atau pembatalan tertakluk kepada terma dan syarat.</li>
+                            <li>Pembayaran penuh perlu dibuat selewat-lewatnya sebelum tarikh perjalanan.</li>
+                        </ul>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="assets/script.js"></script>
+</body>
+</html>
