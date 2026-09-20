@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html>
 
-<head> 
+<head>
     <title>Invoice Generator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/style.css">
+    <link rel="stylesheet" href="assets/style.css?v=9">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -23,7 +24,7 @@
         <!-- FORM -->
         <div class="form-section bg-white p-4 shadow-sm rounded border">
 
-            <h4 class="mt-4 mb-3 border-bottom pb-2 d-flex align-items-center gap-2 fw-bold text-dark"><i
+            <h4 class="mt-2 mb-3 border-bottom pb-2 d-flex align-items-center gap-2 fw-bold text-dark"><i
                     class="fa-solid fa-layer-group text-orange-500"></i> E-Invoice Travel</h4>
             <div class="d-flex gap-2 mb-3">
                 <button type="button" class="btn btn-primary btn-sm flex-fill fw-bold" onclick="saveInvoice()"><i
@@ -34,8 +35,9 @@
                 <input type="file" id="loadInvoiceFile" style="display:none" accept=".inv"
                     onchange="loadInvoice(event)">
             </div>
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Currency</label>
-            <select id="currency" onchange="updateInvoice()" class="form-select form-select-sm">
+
+            <label class="form-label small fw-bold text-secondary mt-2 mb-1">Currency</label>
+            <select id="currency" onchange="updateInvoice()" class="form-select form-select-sm mb-3">
                 <option value="RM">MYR (RM)</option>
                 <option value="$">USD ($)</option>
                 <option value="€">EUR (€)</option>
@@ -49,113 +51,274 @@
                 <option value="₫">VND (₫)</option>
             </select>
 
-            <h4 class="mt-4 mb-3 border-bottom pb-2 d-flex align-items-center gap-2 fw-bold text-dark"><i
-                    class="fa-solid fa-layer-group text-orange-500"></i> Company Details</h4>
+            <div class="d-flex justify-content-between align-items-center mt-2 mb-2 px-1">
+                <span class="small fw-bold text-secondary text-uppercase"
+                    style="font-size: 11px; letter-spacing: 0.5px;">Sections</span>
+                <div class="d-flex gap-2">
+                    <button type="button"
+                        class="btn btn-link btn-sm p-0 text-decoration-none small text-primary fw-semibold"
+                        style="font-size: 11px;" onclick="toggleAllAccordion(true)">Expand All</button>
+                    <span class="text-muted small">|</span>
+                    <button type="button"
+                        class="btn btn-link btn-sm p-0 text-decoration-none small text-secondary fw-semibold"
+                        style="font-size: 11px;" onclick="toggleAllAccordion(false)">Collapse All</button>
+                </div>
+            </div>
 
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Company Logo</label>
-            <input type="file" id="logoUpload" accept="image/*" class="form-control form-control-sm mt-1">
+            <!-- ACCORDION -->
+            <div class="accordion custom-accordion" id="formAccordion">
 
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Company Name</label>
-            <input type="text" id="companyName" value="" class="form-control form-control-sm">
+                <!-- 1. Company Details -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingCompany">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseCompany" aria-expanded="false" aria-controls="collapseCompany">
+                            <i class="fa-solid fa-building text-orange-500 me-2"></i> Company Details
+                        </button>
+                    </h2>
+                    <div id="collapseCompany" class="accordion-collapse collapse" aria-labelledby="headingCompany">
+                        <div class="accordion-body">
+                            <label class="form-label small fw-bold text-secondary mb-1">Company Logo</label>
+                            <div class="input-group input-group-sm mb-2">
+                                <input type="file" id="logoUpload" accept="image/*"
+                                    class="form-control form-control-sm">
+                                <button class="btn btn-outline-danger" type="button" onclick="removeLogo()"
+                                    title="Cancel / Remove Logo"><i class="fa-solid fa-trash-can"></i></button>
+                            </div>
 
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Company Address</label>
-            <textarea id="companyAddress" placeholder="Company Address" class="form-control form-control-sm"
-                rows="3"></textarea>
+                            <label class="form-label small fw-bold text-secondary mb-1">Company Name</label>
+                            <input type="text" id="companyName" value="" class="form-control form-control-sm mb-2">
 
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Phone</label>
-            <input type="text" id="companyPhone" value="" class="form-control form-control-sm">
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Email</label>
-            <input type="text" id="companyEmail" value="" class="form-control form-control-sm">
+                            <label class="form-label small fw-bold text-secondary mb-1">Company Address</label>
+                            <textarea id="companyAddress" placeholder="Company Address"
+                                class="form-control form-control-sm mb-2" rows="3"></textarea>
 
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Website</label>
-            <input type="text" id="companyWebsite" value="" class="form-control form-control-sm">
+                            <label class="form-label small fw-bold text-secondary mb-1">Phone</label>
+                            <input type="text" id="companyPhone" value="" class="form-control form-control-sm mb-2">
 
-            <h5 class="mt-4 mb-3 d-flex align-items-center gap-2 fw-bold text-dark"><i
-                    class="fa-solid fa-share-nodes text-orange-500"></i> Social Media</h5>
-            <details id="socialSection" open>
-                <summary>Details</summary>
-                <div id="socialItems" class="d-flex flex-column gap-2 mt-2"></div>
-                <button type="button" onclick="addSocialRow()"
-                    class="btn btn-light btn-sm w-100 mt-2 mb-3 border fw-bold d-flex justify-content-center align-items-center gap-2">+
-                    Add Social Media</button>
-            </details>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label small fw-bold text-secondary mb-0">Email</label>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="showCompanyEmail"
+                                        title="Toggle Email visibility in preview" onchange="updateInvoice()">
+                                </div>
+                            </div>
+                            <input type="text" id="companyEmail" value="" class="form-control form-control-sm mb-2">
 
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label small fw-bold text-secondary mb-0">Website</label>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="showCompanyWebsite"
+                                        title="Toggle Website visibility in preview" onchange="updateInvoice()">
+                                </div>
+                            </div>
+                            <input type="text" id="companyWebsite" value="" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                </div>
 
+                <!-- 2. Social Media -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingSocial">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseSocial" aria-expanded="false" aria-controls="collapseSocial">
+                            <i class="fa-solid fa-share-nodes text-orange-500 me-2"></i> Social Media
+                        </button>
+                    </h2>
+                    <div id="collapseSocial" class="accordion-collapse collapse" aria-labelledby="headingSocial">
+                        <div class="accordion-body">
+                            <div id="socialItems" class="d-flex flex-column gap-2"></div>
+                            <button type="button" onclick="addSocialRow()"
+                                class="btn btn-light btn-sm w-100 mt-2 border fw-bold d-flex justify-content-center align-items-center gap-2">+
+                                Add Social Media</button>
+                        </div>
+                    </div>
+                </div>
 
-            <h4 class="mt-4 mb-3 border-bottom pb-2 d-flex align-items-center gap-2 fw-bold text-dark"><i
-                    class="fa-solid fa-layer-group text-orange-500"></i> Invoice Info</h4>
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Invoice No</label>
-            <input type="text" id="invoiceNo" value="" class="form-control form-control-sm">
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Date</label>
-            <input type="date" id="invoiceDate" class="form-control form-control-sm">
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Due Date</label>
-            <input type="date" id="dueDate" class="form-control form-control-sm">
+                <!-- 3. Invoice Info -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingInvoice">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseInvoice" aria-expanded="false" aria-controls="collapseInvoice">
+                            <i class="fa-solid fa-file-invoice text-orange-500 me-2"></i> Invoice Info
+                        </button>
+                    </h2>
+                    <div id="collapseInvoice" class="accordion-collapse collapse" aria-labelledby="headingInvoice">
+                        <div class="accordion-body">
+                            <label class="form-label small fw-bold text-secondary mb-1">Invoice No</label>
+                            <input type="text" id="invoiceNo" value="" class="form-control form-control-sm mb-2">
+                            <label class="form-label small fw-bold text-secondary mb-1">Date</label>
+                            <input type="date" id="invoiceDate" class="form-control form-control-sm mb-2">
+                            <label class="form-label small fw-bold text-secondary mb-1">Due Date</label>
+                            <input type="date" id="dueDate" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                </div>
 
+                <!-- 4. Customer (Bill To) -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingCustomer">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseCustomer" aria-expanded="false" aria-controls="collapseCustomer">
+                            <i class="fa-solid fa-user text-orange-500 me-2"></i> Customer (Bill To)
+                        </button>
+                    </h2>
+                    <div id="collapseCustomer" class="accordion-collapse collapse" aria-labelledby="headingCustomer">
+                        <div class="accordion-body">
+                            <label class="form-label small fw-bold text-secondary mb-1">Customer Name</label>
+                            <input type="text" id="customerName" value="" class="form-control form-control-sm mb-2">
+                            <label class="form-label small fw-bold text-secondary mb-1">Customer Address</label>
+                            <textarea id="customerAddress" placeholder="Customer Address"
+                                class="form-control form-control-sm mb-2" rows="3"></textarea>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label small fw-bold text-secondary mb-0">Social / Ref</label>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="showCustomerSocial"
+                                        title="Toggle Social/Ref visibility in preview" onchange="updateInvoice()">
+                                </div>
+                            </div>
+                            <input type="text" id="customerSocial" value="" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                </div>
 
-            <h4 class="mt-4 mb-3 border-bottom pb-2 d-flex align-items-center gap-2 fw-bold text-dark"><i
-                    class="fa-solid fa-layer-group text-orange-500"></i> Customer (Bill To)</h4>
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Customer Name</label>
-            <input type="text" id="customerName" value="" class="form-control form-control-sm">
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Customer Address</label>
-            <textarea id="customerAddress" placeholder="Customer Address" class="form-control form-control-sm"
-                rows="3"></textarea>
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Social / Ref</label>
-            <input type="text" id="customerSocial" value="" class="form-control form-control-sm">
+                <!-- 5. Trip Details -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingTrip">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseTrip" aria-expanded="false" aria-controls="collapseTrip">
+                            <i class="fa-solid fa-plane-departure text-orange-500 me-2"></i> Trip Details
+                        </button>
+                    </h2>
+                    <div id="collapseTrip" class="accordion-collapse collapse" aria-labelledby="headingTrip">
+                        <div class="accordion-body">
+                            <label class="form-label small fw-bold text-secondary mb-1">Trip Name</label>
+                            <input type="text" id="tripName" value="" class="form-control form-control-sm mb-2">
+                            <label class="form-label small fw-bold text-secondary mb-1">Travel Date</label>
+                            <input type="date" id="tripDate" class="form-control form-control-sm mb-2">
+                            <label class="form-label small fw-bold text-secondary mb-1">No. Of Pax</label>
+                            <input type="text" id="tripPax" value="" class="form-control form-control-sm mb-2">
+                            <label class="form-label small fw-bold text-secondary mb-1">Sales Consultant</label>
+                            <input type="text" id="tripConsultant" value="" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                </div>
 
+                <!-- 6. Meta Info -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingMeta">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseMeta" aria-expanded="false" aria-controls="collapseMeta">
+                            <i class="fa-solid fa-circle-info text-orange-500 me-2"></i> Meta Info
+                        </button>
+                    </h2>
+                    <div id="collapseMeta" class="accordion-collapse collapse" aria-labelledby="headingMeta">
+                        <div class="accordion-body">
+                            <label class="form-label small fw-bold text-secondary mb-1">Group Size</label>
+                            <input type="text" id="groupSize" value="" class="form-control form-control-sm mb-2">
+                            <label class="form-label small fw-bold text-secondary mb-1">Payment Terms</label>
+                            <input type="text" id="paymentTerms" value="" class="form-control form-control-sm mb-2">
+                            <label class="form-label small fw-bold text-secondary mb-1">Mode of Payment</label>
+                            <select id="paymentMode" class="form-select form-select-sm">
+                                <option>Credit Card</option>
+                                <option>Bank Transfer</option>
+                                <option>Cash</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
 
-            <h4 class="mt-4 mb-3 border-bottom pb-2 d-flex align-items-center gap-2 fw-bold text-dark"><i
-                    class="fa-solid fa-layer-group text-orange-500"></i> Trip Details</h4>
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Nama Trip</label>
-            <input type="text" id="tripName" value="" class="form-control form-control-sm">
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Tarikh Travel</label>
-            <input type="text" id="tripDate" value="" class="form-control form-control-sm">
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Bilangan Pax</label>
-            <input type="text" id="tripPax" value="" class="form-control form-control-sm">
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Sales Consultant</label>
-            <input type="text" id="tripConsultant" value="" class="form-control form-control-sm">
+                <!-- 7. Items (Packages) -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingItems">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseItems" aria-expanded="false" aria-controls="collapseItems">
+                            <i class="fa-solid fa-box-open text-orange-500 me-2"></i> Items (Packages)
+                        </button>
+                    </h2>
+                    <div id="collapseItems" class="accordion-collapse collapse" aria-labelledby="headingItems">
+                        <div class="accordion-body">
+                            <div id="invoiceItems" class="d-flex flex-column gap-2"></div>
+                            <button type="button" onclick="addRow('invoiceItems')"
+                                class="btn btn-outline-primary btn-sm w-100 mt-2 fw-bold d-flex justify-content-center align-items-center gap-2"><i
+                                    class="fa-solid fa-plus"></i> Add Package</button>
+                        </div>
+                    </div>
+                </div>
 
+                <!-- 8. Add-On / Services -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingAddons">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseAddons" aria-expanded="false" aria-controls="collapseAddons">
+                            <i class="fa-solid fa-tags text-orange-500 me-2"></i> Add-On / Services
+                        </button>
+                    </h2>
+                    <div id="collapseAddons" class="accordion-collapse collapse" aria-labelledby="headingAddons">
+                        <div class="accordion-body">
+                            <div id="addonItems" class="d-flex flex-column gap-2"></div>
+                            <button type="button" onclick="addRow('addonItems')"
+                                class="btn btn-outline-primary btn-sm w-100 mt-2 fw-bold d-flex justify-content-center align-items-center gap-2"><i
+                                    class="fa-solid fa-plus"></i> Add Add-on</button>
+                        </div>
+                    </div>
+                </div>
 
-            <h4 class="mt-4 mb-3 border-bottom pb-2 d-flex align-items-center gap-2 fw-bold text-dark"><i
-                    class="fa-solid fa-layer-group text-orange-500"></i> Meta Info</h4>
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Group Size</label>
-            <input type="text" id="groupSize" value="" class="form-control form-control-sm">
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Payment Terms</label>
-            <input type="text" id="paymentTerms" value="" class="form-control form-control-sm">
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Mode of Payment</label>
-            <select id="paymentMode" class="form-select form-select-sm">
-                <option>Credit Card</option>
-                <option>Bank Transfer</option>
-                <option>Cash</option>
-            </select>
+                <!-- 9. Payment -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingPayment">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapsePayment" aria-expanded="false" aria-controls="collapsePayment">
+                            <i class="fa-solid fa-credit-card text-orange-500 me-2"></i> Payment
+                        </button>
+                    </h2>
+                    <div id="collapsePayment" class="accordion-collapse collapse" aria-labelledby="headingPayment">
+                        <div class="accordion-body">
+                            <label class="form-label small fw-bold text-secondary mb-1">Deposit Paid (<span
+                                    class="p_currency_lbl">RM</span>)</label>
+                            <input type="number" id="depositPaid" value="" class="form-control form-control-sm mb-2">
+                            <label class="form-label small fw-bold text-secondary mb-1">Tax (%)</label>
+                            <input type="number" id="tax" value="" class="form-control form-control-sm">
+                        </div>
+                    </div>
+                </div>
 
+                <!-- 10. Signature / Approval -->
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="headingSignature">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#collapseSignature" aria-expanded="false" aria-controls="collapseSignature">
+                            <i class="fa-solid fa-signature text-orange-500 me-2"></i> Signature / Approval
+                        </button>
+                    </h2>
+                    <div id="collapseSignature" class="accordion-collapse collapse" aria-labelledby="headingSignature">
+                        <div class="accordion-body">
+                            <label class="form-label small fw-bold text-secondary mb-1">Approved By (Full Name)</label>
+                            <input type="text" id="approvedByName" placeholder="e.g. NG. V. CHIEU"
+                                class="form-control form-control-sm mb-2">
+                            <label class="form-label small fw-bold text-secondary mb-1">Signature Image
+                                (Optional)</label>
+                            <div class="input-group input-group-sm">
+                                <input type="file" id="signatureUpload" accept="image/*"
+                                    class="form-control form-control-sm">
+                                <button class="btn btn-outline-danger" type="button" onclick="removeSignature()"
+                                    title="Cancel / Remove Signature"><i class="fa-solid fa-trash-can"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-            <h4 class="mt-4 mb-3 border-bottom pb-2 d-flex align-items-center gap-2 fw-bold text-dark"><i
-                    class="fa-solid fa-layer-group text-orange-500"></i> Items (Packages)</h4>
-            <div id="invoiceItems" class="d-flex flex-column gap-2"></div>
-            <button onclick="addRow('invoiceItems')">+ Add Package</button>
+            </div>
 
-
-            <h4 class="mt-4 mb-3 border-bottom pb-2 d-flex align-items-center gap-2 fw-bold text-dark"><i
-                    class="fa-solid fa-layer-group text-orange-500"></i> Add-On / Services</h4>
-            <div id="addonItems" class="d-flex flex-column gap-2"></div>
-            <button onclick="addRow('addonItems')">+ Add Add-on</button>
-
-
-            <h4 class="mt-4 mb-3 border-bottom pb-2 d-flex align-items-center gap-2 fw-bold text-dark"><i
-                    class="fa-solid fa-layer-group text-orange-500"></i> Payment</h4>
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Deposit Paid (RM)</label>
-            <input type="number" id="depositPaid" value="" class="form-control form-control-sm">
-            <label class="form-label small fw-bold text-secondary mt-3 mb-1">Tax (%)</label>
-            <input type="number" id="tax" value="" class="form-control form-control-sm">
-
-            <br><br>
-            <button type="button"
-                class="btn btn-primary w-100 fw-bold py-2 shadow-sm d-flex justify-content-center align-items-center gap-2 mb-3"
-                onclick="saveInvoice()"><i class="fa-solid fa-download"></i> Save Draft (.inv)</button>
-            <button onclick="downloadPDF()"
-                class="btn btn-warning w-100 mt-4 fw-bold py-2 shadow-sm d-flex justify-content-center align-items-center gap-2"
-                style="background-color: #EF6C00; color: white; border: none;"><i class="fa-solid fa-file-pdf"></i>
-                Download PDF</button>
+            <div class="mt-4 pt-2">
+                <button type="button"
+                    class="btn btn-primary w-100 fw-bold py-2 shadow-sm d-flex justify-content-center align-items-center gap-2 mb-2"
+                    onclick="saveInvoice()"><i class="fa-solid fa-download"></i> Save Draft (.inv)</button>
+                <button onclick="downloadPDF()"
+                    class="btn btn-warning w-100 fw-bold py-2 shadow-sm d-flex justify-content-center align-items-center gap-2"
+                    style="background-color: #EF6C00; color: white; border: none;"><i class="fa-solid fa-file-pdf"></i>
+                    Download PDF</button>
+            </div>
         </div>
 
         <!-- PREVIEW -->
@@ -167,16 +330,18 @@
                         <!-- Header -->
                         <div class="header-banner">
                             <div class="header-left">
-                                <img id="previewLogo" src="" style="display:none; max-width:200px;">
+                                <img id="previewLogo" src="travellogo.jpeg" alt="Logo" style="max-width:200px;">
                             </div>
                             <div class="header-center">
-                                <div class="contact-item"><i class="fa-solid fa-location-dot"></i> <span
-                                        id="p_cNameAddress"></span></div>
-                                <div class="contact-item"><i class="fa-solid fa-phone"></i> <span id="p_cPhone"></span>
+                                <div class="contact-item" id="p_item_cAddress"><i class="fa-solid fa-location-dot"></i>
+                                    <span id="p_cNameAddress"></span></div>
+                                <div class="contact-item" id="p_item_cPhone"><i class="fa-solid fa-phone"></i> <span
+                                        id="p_cPhone"></span>
                                 </div>
-                                <div class="contact-item"><i class="fa-solid fa-envelope"></i> <span
+                                <div class="contact-item" id="p_item_cEmail"><i class="fa-solid fa-envelope"></i> <span
                                         id="p_cEmail"></span></div>
-                                <div class="contact-item"><i class="fa-solid fa-globe"></i> <span id="p_cWeb"></span>
+                                <div class="contact-item" id="p_item_cWeb"><i class="fa-solid fa-globe"></i> <span
+                                        id="p_cWeb"></span>
                                 </div>
                                 <div id="previewCompanySocials"></div>
                             </div>
@@ -198,22 +363,23 @@
                                 <div class="box-title">BILL TO</div>
                                 <h3 id="p_custName"></h3>
                                 <p id="p_custAddr"></p>
-                                <p><i class="fa-brands fa-facebook"></i> <span id="p_custSoc"></span></p>
+                                <p id="p_item_custSoc" style="display:none;"><i class="fa-brands fa-facebook"></i> <span
+                                        id="p_custSoc"></span></p>
                             </div>
                             <!-- Trip Details -->
                             <div class="box-section">
                                 <div class="box-title">TRIP DETAILS</div>
                                 <table class="trip-table">
                                     <tr>
-                                        <td><i class="fa-solid fa-suitcase"></i> Nama Trip</td>
+                                        <td><i class="fa-solid fa-suitcase"></i> Trip Name</td>
                                         <td id="p_tripName"></td>
                                     </tr>
                                     <tr>
-                                        <td><i class="fa-regular fa-calendar"></i> Tarikh Travel</td>
+                                        <td><i class="fa-regular fa-calendar"></i> Travel Date</td>
                                         <td id="p_tripDate"></td>
                                     </tr>
                                     <tr>
-                                        <td><i class="fa-solid fa-users"></i> Bilangan Pax</td>
+                                        <td><i class="fa-solid fa-users"></i> No. Of Pax</td>
                                         <td id="p_tripPax"></td>
                                     </tr>
                                     <tr>
@@ -252,32 +418,39 @@
                             </tbody>
                         </table>
 
-                        <!-- Summary -->
-                        <div class="summary-area">
-                            <div class="payment-summary">
-                                <div class="sum-title"><i class="fa-solid fa-credit-card"></i> PAYMENT SUMMARY</div>
-                                <div class="sum-row"><span>Package Total</span><span id="s_pkgTot">RM 0.00</span></div>
-                                <div class="sum-row orange"><span>Deposit Paid</span><span id="s_dep">RM 0.00</span>
+                        <!-- Invoice Bottom Block: Summary & Signature together -->
+                        <div class="invoice-bottom-block">
+                            <!-- Summary -->
+                            <div class="summary-area">
+                                <div class="payment-summary">
+                                    <div class="sum-title"><i class="fa-solid fa-credit-card"></i> PAYMENT SUMMARY</div>
+                                    <div class="sum-row"><span>Package Total</span><span id="s_pkgTot">RM 0.00</span>
+                                    </div>
+                                    <div class="sum-row orange"><span>Deposit Paid</span><span id="s_dep">RM 0.00</span>
+                                    </div>
+                                    <div class="sum-balance"><span>BALANCE DUE</span><span id="s_bal">RM 0.00</span>
+                                    </div>
                                 </div>
-                                <div class="sum-balance"><span>BALANCE DUE</span><span id="s_bal">RM 0.00</span></div>
-                            </div>
-                            <div class="total-summary">
-                                <div class="sum-row"><span>Subtotal</span><span id="s_sub">RM 0.00</span></div>
-                                <div class="sum-row"><span>Tax (SST <span id="s_taxPct">0</span>%)</span><span
-                                        id="s_taxVal">RM 0.00</span></div>
-                                <div class="grand-total"><span>TOTAL AMOUNT</span><span id="s_grand">RM 0.00</span>
+                                <div class="total-summary">
+                                    <div class="sum-row"><span>Subtotal</span><span id="s_sub">RM 0.00</span></div>
+                                    <div class="sum-row"><span>Tax (SST <span id="s_taxPct">0</span>%)</span><span
+                                            id="s_taxVal">RM 0.00</span></div>
+                                    <div class="grand-total"><span>TOTAL AMOUNT</span><span id="s_grand">RM 0.00</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- T&C -->
-                        <div class="tc-area">
-                            <h4><i class="fa-regular fa-file-lines"></i> TERMS & CONDITIONS</h4>
-                            <ul>
-                                <li>Deposit tidak boleh dipulangkan selepas pengesahan tempahan dibuat.</li>
-                                <li>Sebarang perubahan tarikh atau pembatalan tertakluk kepada terma dan syarat.</li>
-                                <li>Pembayaran penuh perlu dibuat selewat-lewatnya sebelum tarikh perjalanan.</li>
-                            </ul>
+                            <!-- Signature Area (Bottom Right) -->
+                            <div class="footer-signature-area">
+                                <div class="sig-box">
+                                    <div class="sig-header">Approved By</div>
+                                    <div class="sig-img-container">
+                                        <img id="previewSignature" src=""
+                                            style="display:none; max-height: 50px; max-width: 150px; margin: 4px auto;">
+                                    </div>
+                                    <div class="sig-name-bottom" id="p_sigNameBottom"></div>
+                                </div>
+                            </div>
                         </div>
 
                     </div>
@@ -286,7 +459,7 @@
         </div>
     </div>
 
-    <script src="assets/script.js"></script>
+    <script src="assets/script.js?v=12"></script>
 </body>
 
 </html>

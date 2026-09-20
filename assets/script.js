@@ -70,13 +70,16 @@ function removeSocialRow(btn) {
 
 function formatDate(dateString) {
     if (!dateString) return '-';
+    if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+        const [year, month, day] = dateString.split('-');
+        return `${day}-${month}-${year}`;
+    }
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return dateString;
     const day = String(date.getDate()).padStart(2, '0');
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const month = months[date.getMonth()];
+    const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
+    return `${day}-${month}-${year}`;
 }
 
 function updateInvoice() {
@@ -84,19 +87,46 @@ function updateInvoice() {
     document.querySelectorAll(".p_currency_lbl").forEach(el => el.innerText = currency);
 
     // 1. Update Company & Header
-    document.getElementById("p_cNameAddress").innerText = document.getElementById("companyName").value + " - " + document.getElementById("companyAddress").value.replace(/\n/g, ', ');
-    document.getElementById("p_cPhone").innerText = document.getElementById("companyPhone").value;
-    document.getElementById("p_cEmail").innerText = document.getElementById("companyEmail").value;
-    document.getElementById("p_cWeb").innerText = document.getElementById("companyWebsite").value;
-    
+    let cName = (document.getElementById("companyName")?.value || "").trim();
+    let cAddr = (document.getElementById("companyAddress")?.value || "").trim();
+    let fullAddr = [cName, cAddr.replace(/\n/g, ', ')].filter(Boolean).join(' - ');
+    let pAddressItem = document.getElementById("p_item_cAddress");
+    if (pAddressItem) {
+        document.getElementById("p_cNameAddress").innerText = fullAddr;
+        pAddressItem.style.display = fullAddr ? "flex" : "none";
+    }
+
+    let phoneVal = (document.getElementById("companyPhone")?.value || "").trim();
+    let pPhoneItem = document.getElementById("p_item_cPhone");
+    if (pPhoneItem) {
+        document.getElementById("p_cPhone").innerText = phoneVal;
+        pPhoneItem.style.display = phoneVal ? "flex" : "none";
+    }
+
+    let emailVal = (document.getElementById("companyEmail")?.value || "").trim();
+    let showEmail = document.getElementById("showCompanyEmail") ? document.getElementById("showCompanyEmail").checked : false;
+    let pEmailItem = document.getElementById("p_item_cEmail");
+    if (pEmailItem) {
+        document.getElementById("p_cEmail").innerText = emailVal;
+        pEmailItem.style.display = (showEmail && emailVal !== "") ? "flex" : "none";
+    }
+
+    let webVal = (document.getElementById("companyWebsite")?.value || "").trim();
+    let showWeb = document.getElementById("showCompanyWebsite") ? document.getElementById("showCompanyWebsite").checked : false;
+    let pWebItem = document.getElementById("p_item_cWeb");
+    if (pWebItem) {
+        document.getElementById("p_cWeb").innerText = webVal;
+        pWebItem.style.display = (showWeb && webVal !== "") ? "flex" : "none";
+    }
+
     // Social Media
     let socialHtml = "";
     document.querySelectorAll("#socialItems .item-row").forEach(row => {
         let platform = row.querySelector(".socialPlatform").value;
         let value = row.querySelector(".socialValue").value;
-        if(value.trim() !== "") {
+        if (value.trim() !== "") {
             let icon = "";
-            switch(platform){
+            switch (platform) {
                 case "Facebook": icon = "fa-brands fa-facebook"; break;
                 case "Instagram": icon = "fa-brands fa-instagram"; break;
                 case "TikTok": icon = "fa-brands fa-tiktok"; break;
@@ -109,7 +139,7 @@ function updateInvoice() {
         }
     });
     let socialContainer = document.getElementById("previewCompanySocials");
-    if(socialContainer) socialContainer.innerHTML = socialHtml;
+    if (socialContainer) socialContainer.innerHTML = socialHtml;
 
 
     document.getElementById("p_invNo").innerText = document.getElementById("invoiceNo").value;
@@ -119,10 +149,17 @@ function updateInvoice() {
     // 2. Bill To & Trip Details
     document.getElementById("p_custName").innerText = document.getElementById("customerName").value;
     document.getElementById("p_custAddr").innerText = document.getElementById("customerAddress").value;
-    document.getElementById("p_custSoc").innerText = document.getElementById("customerSocial").value;
+
+    let custSocVal = (document.getElementById("customerSocial")?.value || "").trim();
+    let showCustSoc = document.getElementById("showCustomerSocial") ? document.getElementById("showCustomerSocial").checked : false;
+    let pCustSocItem = document.getElementById("p_item_custSoc");
+    if (pCustSocItem) {
+        document.getElementById("p_custSoc").innerText = custSocVal;
+        pCustSocItem.style.display = (showCustSoc && custSocVal !== "") ? "block" : "none";
+    }
 
     document.getElementById("p_tripName").innerText = document.getElementById("tripName").value;
-    document.getElementById("p_tripDate").innerText = document.getElementById("tripDate").value;
+    document.getElementById("p_tripDate").innerText = formatDate(document.getElementById("tripDate").value);
     document.getElementById("p_tripPax").innerText = document.getElementById("tripPax").value;
     document.getElementById("p_tripCons").innerText = document.getElementById("tripConsultant").value;
 
@@ -136,7 +173,7 @@ function updateInvoice() {
     // 4. Calculate Items & Build Table
     let pkgRows = document.querySelectorAll("#invoiceItems .item-row");
     let addonRows = document.querySelectorAll("#addonItems .item-row");
-    
+
     let subtotal = 0;
     let html = "";
     let idx = 1;
@@ -151,7 +188,7 @@ function updateInvoice() {
             let total = price * qty;
             subtotal += total;
             row.querySelector(".lineTotal").innerText = total.toFixed(2);
-            
+
             html += `<tr><td>${idx++}</td><td>${desc}</td><td>${qty} Pax</td><td>${price.toFixed(2)}</td><td>${total.toFixed(2)}</td></tr>`;
         });
     }
@@ -166,7 +203,7 @@ function updateInvoice() {
             let total = price * qty;
             subtotal += total;
             row.querySelector(".lineTotal").innerText = total.toFixed(2);
-            
+
             html += `<tr><td>${idx++}</td><td>${desc}</td><td>${qty} Pax</td><td>${price.toFixed(2)}</td><td>${total.toFixed(2)}</td></tr>`;
         });
     }
@@ -174,7 +211,7 @@ function updateInvoice() {
     if (html === "") {
         html = `<tr><td colspan="5">No services added</td></tr>`;
     }
-    
+
     document.getElementById("p_items").innerHTML = html;
 
     // 5. Totals & Payment Summary
@@ -187,26 +224,34 @@ function updateInvoice() {
     document.getElementById("s_pkgTot").innerText = currency + " " + subtotal.toFixed(2);
     document.getElementById("s_dep").innerText = currency + " " + deposit.toFixed(2);
     document.getElementById("s_bal").innerText = currency + " " + balance.toFixed(2);
-    
+
     document.getElementById("s_sub").innerText = currency + " " + subtotal.toFixed(2);
     document.getElementById("s_taxPct").innerText = taxPct;
     document.getElementById("s_taxVal").innerText = currency + " " + taxVal.toFixed(2);
     document.getElementById("s_grand").innerText = currency + " " + grand.toFixed(2);
+
+    // 6. Approved By Signature
+    let sigName = (document.getElementById("approvedByName")?.value || "").trim();
+    let pSigNameBottom = document.getElementById("p_sigNameBottom");
+    if (pSigNameBottom) {
+        pSigNameBottom.innerText = sigName ? sigName : "";
+    }
 }
 
 /* Listeners */
 document.querySelectorAll('input, textarea, select').forEach(el => {
     el.addEventListener('input', updateInvoice);
+    el.addEventListener('change', updateInvoice);
 });
 
 // Logo
 const logoUpload = document.getElementById("logoUpload");
 if (logoUpload) {
-    logoUpload.addEventListener("change", function(e) {
+    logoUpload.addEventListener("change", function (e) {
         const file = e.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = function (event) {
             const logo = document.getElementById("previewLogo");
             logo.src = event.target.result;
             logo.style.display = "block";
@@ -215,40 +260,80 @@ if (logoUpload) {
     });
 }
 
-function downloadPDF(){
+function removeLogo() {
+    const input = document.getElementById("logoUpload");
+    if (input) input.value = "";
+    const logo = document.getElementById("previewLogo");
+    if (logo) {
+        logo.src = "";
+        logo.style.display = "none";
+    }
+}
+
+// Signature Upload
+const signatureUpload = document.getElementById("signatureUpload");
+if (signatureUpload) {
+    signatureUpload.addEventListener("change", function (e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (event) {
+            const sig = document.getElementById("previewSignature");
+            if (sig) {
+                sig.src = event.target.result;
+                sig.style.display = "block";
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+function removeSignature() {
+    const input = document.getElementById("signatureUpload");
+    if (input) input.value = "";
+    const sig = document.getElementById("previewSignature");
+    if (sig) {
+        sig.src = "";
+        sig.style.display = "none";
+    }
+}
+
+function downloadPDF() {
     updateInvoice();
     const invoice = document.getElementById("invoiceToDownload");
+    const invNumber = document.getElementById("invoiceNo")?.value.trim() || "invoice";
 
-    html2pdf().set({
+    const opt = {
         margin: 0,
-        filename: 'invoice.pdf',
-        image: { type: 'jpeg', quality: 1 },
-        html2canvas: { 
-            scale: 2, 
+        filename: `${invNumber}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+            scale: 2,
             useCORS: true,
             scrollY: 0,
             scrollX: 0,
-            onclone: function(clonedDoc) {
+            onclone: function (clonedDoc) {
                 // Remove the CSS scale completely on the cloned document
                 const scaleWrapper = clonedDoc.querySelector('.preview-scale');
                 if (scaleWrapper) {
                     scaleWrapper.classList.remove('preview-scale');
                     scaleWrapper.style.transform = 'none';
                 }
-                
-                // Force the exact A4 pixel dimensions on the invoice wrapper
+
+                // Force exact dimensions on invoice
                 const clonedInvoice = clonedDoc.getElementById('invoiceToDownload');
-                clonedInvoice.style.width = '794px';
-                clonedInvoice.style.maxWidth = '794px';
-                clonedInvoice.style.minHeight = 'auto'; // Let content dictate height to prevent blank page spill
-                clonedInvoice.style.height = 'auto';
-                clonedInvoice.style.margin = '0';
-                clonedInvoice.style.padding = '0';
-                clonedInvoice.style.boxShadow = 'none'; // Remove shadow to prevent bleed
-                clonedInvoice.style.border = 'none';
-                
-                
-                // Ensure body/html have no extra space causing blank pages
+                if (clonedInvoice) {
+                    clonedInvoice.style.width = '794px';
+                    clonedInvoice.style.maxWidth = '794px';
+                    clonedInvoice.style.minHeight = 'auto';
+                    clonedInvoice.style.height = 'auto';
+                    clonedInvoice.style.margin = '0';
+                    clonedInvoice.style.padding = '0';
+                    clonedInvoice.style.boxShadow = 'none';
+                    clonedInvoice.style.border = 'none';
+                }
+
+                // Ensure body/html have no extra spacing
                 clonedDoc.body.style.margin = '0';
                 clonedDoc.body.style.padding = '0';
                 clonedDoc.documentElement.style.margin = '0';
@@ -256,9 +341,11 @@ function downloadPDF(){
                 clonedDoc.documentElement.style.fontSize = '16px';
             }
         },
-        pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.invoice-bottom-block', '.summary-area', '.footer-signature-area'] },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(invoice).save();
+    };
+
+    html2pdf().set(opt).from(invoice).save();
 }
 
 // Init
@@ -289,6 +376,10 @@ function saveInvoice() {
         paymentMode: document.getElementById("paymentMode").value,
         depositPaid: document.getElementById("depositPaid").value,
         tax: document.getElementById("tax").value,
+        approvedByName: document.getElementById("approvedByName") ? document.getElementById("approvedByName").value : "",
+        showCompanyEmail: document.getElementById("showCompanyEmail") ? document.getElementById("showCompanyEmail").checked : false,
+        showCompanyWebsite: document.getElementById("showCompanyWebsite") ? document.getElementById("showCompanyWebsite").checked : false,
+        showCustomerSocial: document.getElementById("showCustomerSocial") ? document.getElementById("showCustomerSocial").checked : false,
         social: [],
         items: [],
         addons: []
@@ -321,10 +412,27 @@ function saveInvoice() {
     let blob = new Blob([json], { type: "application/json" });
     let url = URL.createObjectURL(blob);
     let a = document.createElement("a");
-    
-    let dateStr = new Date().toISOString().slice(0,10).replace(/-/g, "");
+
+    let custName = (data.customerName || "").trim();
+    let travelDate = (data.tripDate || "").trim();
+    let filename = "";
+
+    if (custName && travelDate) {
+        filename = `${custName}_${travelDate}`;
+    } else if (custName) {
+        filename = custName;
+    } else if (travelDate) {
+        filename = `invoice_${travelDate}`;
+    } else {
+        let dateStr = new Date().toISOString().slice(0, 10);
+        filename = `invoice_${dateStr}`;
+    }
+
+    // Sanitize any invalid filename characters
+    filename = filename.replace(/[/\\?%*:|"<>]/g, '-').trim();
+
     a.href = url;
-    a.download = `invoice_${dateStr}.inv`;
+    a.download = `${filename}.inv`;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -334,17 +442,27 @@ function loadInvoice(event) {
     if (!file) return;
 
     let reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
         try {
             let data = JSON.parse(e.target.result);
-            
-            let fields = ["currency", "companyName", "companyAddress", "companyPhone", "companyEmail", "companyWebsite", "invoiceNo", "invoiceDate", "dueDate", "customerName", "customerAddress", "customerSocial", "tripName", "tripDate", "tripPax", "tripConsultant", "groupSize", "paymentTerms", "paymentMode", "depositPaid", "tax"];
-            
+
+            let fields = ["currency", "companyName", "companyAddress", "companyPhone", "companyEmail", "companyWebsite", "invoiceNo", "invoiceDate", "dueDate", "customerName", "customerAddress", "customerSocial", "tripName", "tripDate", "tripPax", "tripConsultant", "groupSize", "paymentTerms", "paymentMode", "depositPaid", "tax", "approvedByName"];
+
             fields.forEach(id => {
-                if(data[id] !== undefined && document.getElementById(id)) {
+                if (data[id] !== undefined && document.getElementById(id)) {
                     document.getElementById(id).value = data[id];
                 }
             });
+
+            if (document.getElementById("showCompanyEmail")) {
+                document.getElementById("showCompanyEmail").checked = data.showCompanyEmail !== undefined ? data.showCompanyEmail : false;
+            }
+            if (document.getElementById("showCompanyWebsite")) {
+                document.getElementById("showCompanyWebsite").checked = data.showCompanyWebsite !== undefined ? data.showCompanyWebsite : false;
+            }
+            if (document.getElementById("showCustomerSocial")) {
+                document.getElementById("showCustomerSocial").checked = data.showCustomerSocial !== undefined ? data.showCustomerSocial : false;
+            }
 
             document.getElementById("socialItems").innerHTML = "";
             document.getElementById("invoiceItems").innerHTML = "";
@@ -383,7 +501,7 @@ function loadInvoice(event) {
             }
 
             updateInvoice();
-            event.target.value = ""; 
+            event.target.value = "";
         } catch (err) {
             alert("Ralat: Fail tidak sah atau rosak.");
             console.error(err);
@@ -391,3 +509,23 @@ function loadInvoice(event) {
     };
     reader.readAsText(file);
 }
+
+function toggleAllAccordion(expand) {
+    document.querySelectorAll('#formAccordion .accordion-collapse').forEach(el => {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
+            const bsCollapse = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+            if (expand) {
+                bsCollapse.show();
+            } else {
+                bsCollapse.hide();
+            }
+        } else {
+            if (expand) {
+                el.classList.add('show');
+            } else {
+                el.classList.remove('show');
+            }
+        }
+    });
+}
+

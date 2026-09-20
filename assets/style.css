@@ -43,7 +43,7 @@ body {
     background: white;
     padding: 0;
     position: relative;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     color: #333;
     overflow: hidden;
 }
@@ -75,8 +75,8 @@ body {
 
 .header-right {
     width: 35%;
-    background: #0d1b32;
-    color: white;
+    background: #d0cb18;
+    color: #000;
     padding: 40px 30px 40px 50px;
     border-bottom-left-radius: 80px;
     box-sizing: border-box;
@@ -87,22 +87,24 @@ body {
     margin: 0 0 15px 0;
     font-size: 32px;
     letter-spacing: 2px;
+    color: #000;
 }
 
 .header-right .lbl {
     font-size: 10px;
     margin: 10px 0 2px 0;
-    color: #aaa;
+    color: #333;
 }
 
 .header-right .val-orange {
-    color: #EF6C00;
+    color: #000;
     font-weight: bold;
     margin: 0;
     font-size: 14px;
 }
 
 .header-right .val-white {
+    color: #000;
     margin: 0;
     font-size: 12px;
 }
@@ -118,8 +120,8 @@ body {
 }
 
 .box-title {
-    background: #0d1b32;
-    color: white;
+    background: #d0cb18;
+    color: #000;
     display: inline-block;
     padding: 5px 30px 5px 15px;
     font-size: 12px;
@@ -194,14 +196,16 @@ body {
 }
 
 .main-table th {
-    background: #0d1b32;
-    color: white;
+    background: #d0cb18;
+    color: #000;
     padding: 10px;
     text-align: center;
     font-weight: 600;
 }
 
-.main-table th:nth-child(2) { text-align: left; }
+.main-table th:nth-child(2) {
+    text-align: left;
+}
 
 .main-table td {
     padding: 10px;
@@ -209,13 +213,27 @@ body {
     border-bottom: 1px solid #f0f0f0;
 }
 
-.main-table td:nth-child(2) { text-align: left; }
+.main-table td:nth-child(2) {
+    text-align: left;
+}
+
+.main-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
 
 .cat-row {
     background: #f4f6f8;
     font-weight: bold;
     color: #0d1b32;
     text-align: left !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+}
+
+.invoice-bottom-block {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
 }
 
 .summary-area {
@@ -224,6 +242,8 @@ body {
     gap: 30px;
     justify-content: space-between;
     align-items: flex-end;
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 
 .payment-summary {
@@ -257,8 +277,8 @@ body {
     display: flex;
     justify-content: space-between;
     padding: 15px;
-    background: #0d1b32;
-    color: #EF6C00;
+    background: #d0cb18;
+    color: #000;
     font-weight: bold;
     font-size: 14px;
 }
@@ -280,46 +300,125 @@ body {
     border-radius: 4px;
 }
 
-.tc-area {
-    margin: 30px 40px;
-    font-size: 10px;
-    color: #444;
+.footer-signature-area {
+    display: flex;
+    justify-content: flex-end;
+    margin: 15px 40px 20px 40px;
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 
-.tc-area h4 {
-    margin: 0 0 10px 0;
-    color: #0d1b32;
-    font-size: 12px;
+.sig-box {
+    text-align: center;
+    min-width: 170px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-.tc-area ul {
-    padding-left: 15px;
-    margin: 0;
+.sig-header {
+    font-size: 13px;
+    font-weight: 700;
+    color: #000;
+    margin-bottom: 2px;
+}
+
+.sig-sub {
+    font-size: 11px;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.sig-img-container {
+    min-height: 50px;
+    min-width: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+}
+
+.sig-name-bottom {
+    font-size: 11px;
+    font-weight: 600;
+    color: #000;
+    min-height: 14px;
 }
 
 @media print {
-    body { padding: 0; margin: 0; background: white; }
-    .form-section { display: none; }
-    .preview-section { transform: none; width: 100%; }
-    .invoice { box-shadow: none; margin: 0; }
+    body {
+        padding: 0;
+        margin: 0;
+        background: white;
+    }
+
+    .form-section {
+        display: none;
+    }
+
+    .preview-section {
+        transform: none;
+        width: 100%;
+    }
+
+    .invoice {
+        box-shadow: none;
+        margin: 0;
+    }
 }
-/* Social Media Section */
-#socialSection{
-    margin:10px 0 20px 0;
-    border:1px solid #ccc;
-    border-radius:4px;
-    background:#fafafa;
+
+/* Custom Accordion Styling */
+.custom-accordion .accordion-item {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px !important;
+    margin-bottom: 10px;
+    overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    background: #ffffff;
 }
-#socialSection summary{
-    padding:10px 15px;
-    cursor:pointer;
-    font-weight:600;
-    border-bottom: 1px solid #ccc;
-}
-#socialTable td {
-    padding: 10px;
+
+.custom-accordion .accordion-button {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: #1e293b;
+    background-color: #f8fafc;
+    padding: 10px 14px;
     border: none;
+    box-shadow: none;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
-#socialTable {
-    width: 100%;
+
+.custom-accordion .accordion-button:not(.collapsed) {
+    color: #0f172a;
+    background-color: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+    box-shadow: none;
+}
+
+.custom-accordion .accordion-button:focus {
+    box-shadow: none;
+    border-color: #cbd5e1;
+}
+
+.custom-accordion .accordion-button::after {
+    background-size: 11px;
+    transition: transform 0.2s ease-in-out;
+    transform: rotate(0deg);
+}
+
+.custom-accordion .accordion-button:not(.collapsed)::after {
+    transform: rotate(-180deg) !important;
+}
+
+/* Fix Tailwind CSS conflict with Bootstrap Accordion Collapse */
+.accordion-collapse,
+.accordion-collapse.collapse,
+.accordion-collapse.collapsing,
+.accordion-collapse.collapse.show {
+    visibility: visible !important;
+}
+
+.custom-accordion .accordion-body {
+    padding: 12px 14px;
+    background-color: #ffffff;
 }
