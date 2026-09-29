@@ -34,6 +34,10 @@ function initCompanyDefault() {
         if (presetSelect) presetSelect.value = defaultKey;
         onCompanyPresetChange(defaultKey);
     }
+    const appNameEl = document.getElementById("approvedByName");
+    if (appNameEl && !appNameEl.value) {
+        appNameEl.value = "N. VAN CHIEU";
+    }
 }
 
 const customerPresets = {
