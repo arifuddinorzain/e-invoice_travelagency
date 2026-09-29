@@ -2,12 +2,16 @@
 <html>
 
 <head>
+    <meta charset="UTF-8">
     <title>Invoice Generator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/style.css?v=9">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="assets/style.css?v=16">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -78,6 +82,12 @@
                     </h2>
                     <div id="collapseCompany" class="accordion-collapse collapse" aria-labelledby="headingCompany">
                         <div class="accordion-body">
+                            <label class="form-label small fw-bold text-secondary mb-1">Select Existing Company</label>
+                            <select id="companyPreset" class="form-select form-select-sm mb-2" onchange="onCompanyPresetChange(this.value)">
+                                <option value="">-- Choose Existing Company / Custom --</option>
+                                <option value="SELAMATVN TOUR AND TRAVEL">SELAMATVN TOUR AND TRAVEL</option>
+                            </select>
+
                             <label class="form-label small fw-bold text-secondary mb-1">Company Logo</label>
                             <div class="input-group input-group-sm mb-2">
                                 <input type="file" id="logoUpload" accept="image/*"
@@ -165,6 +175,18 @@
                     </h2>
                     <div id="collapseCustomer" class="accordion-collapse collapse" aria-labelledby="headingCustomer">
                         <div class="accordion-body">
+                            <label class="form-label small fw-bold text-secondary mb-1">Select Existing Company</label>
+                            <select id="customerPreset" class="form-select form-select-sm mb-2" onchange="onCustomerPresetChange(this.value)">
+                                <option value="">-- Choose Existing Company / Custom --</option>
+                                <option value="FAIRYS HOLIDAY">FAIRYS HOLIDAY</option>
+                                <option value="FAIRYS TRAVEL">FAIRYS TRAVEL</option>
+                                <option value="HARAREI TRAVEL">HARAREI TRAVEL</option>
+                                <option value="JOM TRAVEL">JOM TRAVEL</option>
+                                <option value="LANTERA TRAVEL">LANTERA TRAVEL</option>
+                                <option value="MOOD TRAVEL">MOOD TRAVEL</option>
+                                <option value="MUSLIM TRAVELBUG">MUSLIM TRAVELBUG</option>
+                            </select>
+
                             <label class="form-label small fw-bold text-secondary mb-1">Customer Name</label>
                             <input type="text" id="customerName" value="" class="form-control form-control-sm mb-2">
                             <label class="form-label small fw-bold text-secondary mb-1">Customer Address</label>
@@ -193,13 +215,27 @@
                     <div id="collapseTrip" class="accordion-collapse collapse" aria-labelledby="headingTrip">
                         <div class="accordion-body">
                             <label class="form-label small fw-bold text-secondary mb-1">Trip Name</label>
-                            <input type="text" id="tripName" value="" class="form-control form-control-sm mb-2">
-                            <label class="form-label small fw-bold text-secondary mb-1">Travel Date</label>
-                            <input type="date" id="tripDate" class="form-control form-control-sm mb-2">
+                            <div class="position-relative mb-2">
+                                <input type="text" id="tripName" value="" class="form-control form-control-sm" placeholder="e.g. 5H4M HCM - DALAT - MUINE" autocomplete="off" onfocus="showTripNameDropdown(this)" oninput="onTripNameInput(this)">
+                                <div class="tripname-dropdown-menu position-absolute w-100 bg-white shadow-lg rounded border" style="top: 100%; left: 0; z-index: 1050; max-height: 200px; overflow-y: auto; display: none;"></div>
+                            </div>
+                            <label class="form-label small fw-bold text-secondary mb-1">Travel Date (Single or Range)</label>
+                            <div class="input-group input-group-sm mb-2">
+                                <span class="input-group-text bg-light text-secondary"><i class="fa-regular fa-calendar-days"></i></span>
+                                <input type="text" id="tripDate" class="form-control form-control-sm bg-white" placeholder="Select date or date range" style="cursor: pointer;" readonly>
+                                <button class="btn btn-outline-secondary" type="button" onclick="clearTripDate()" title="Clear Travel Date"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
                             <label class="form-label small fw-bold text-secondary mb-1">No. Of Pax</label>
                             <input type="text" id="tripPax" value="" class="form-control form-control-sm mb-2">
                             <label class="form-label small fw-bold text-secondary mb-1">Sales Consultant</label>
-                            <input type="text" id="tripConsultant" value="" class="form-control form-control-sm">
+                            <div class="position-relative mb-2">
+                                <input type="text" id="tripConsultant" list="consultantList" value="" class="form-control form-control-sm" placeholder="Select or type (e.g. Series Trip, Private Trip)" autocomplete="off" onfocus="showConsultantDropdown(this)" onclick="showConsultantDropdown(this)" oninput="onConsultantInput(this)">
+                                <datalist id="consultantList">
+                                    <option value="Series Trip"></option>
+                                    <option value="Private Trip"></option>
+                                </datalist>
+                                <div class="consultant-dropdown-menu position-absolute w-100 bg-white shadow-lg rounded border" style="top: 100%; left: 0; z-index: 1050; max-height: 180px; overflow-y: auto; display: none;"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -238,6 +274,7 @@
                     </h2>
                     <div id="collapseItems" class="accordion-collapse collapse" aria-labelledby="headingItems">
                         <div class="accordion-body">
+                            <datalist id="packageDatalist"></datalist>
                             <div id="invoiceItems" class="d-flex flex-column gap-2"></div>
                             <button type="button" onclick="addRow('invoiceItems')"
                                 class="btn btn-outline-primary btn-sm w-100 mt-2 fw-bold d-flex justify-content-center align-items-center gap-2"><i
@@ -459,7 +496,7 @@
         </div>
     </div>
 
-    <script src="assets/script.js?v=12"></script>
+    <script src="assets/script.js?v=45"></script>
 </body>
 
 </html>

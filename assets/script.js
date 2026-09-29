@@ -1,23 +1,1416 @@
 let rowCount = 1;
 
-function addRow(tableId) {
+const companyPresets = {
+    "SELAMATVN TOUR AND TRAVEL": {
+        name: "SELAMATVN TOUR AND TRAVEL",
+        address: "20/6 BINH CHANH WARD, BINH CHANH DISTRICT, HO CHI MINH VIETNAM",
+        phone: "+84933743168",
+        email: "",
+        website: ""
+    }
+};
+
+function onCompanyPresetChange(val) {
+    if (val && companyPresets[val]) {
+        const preset = companyPresets[val];
+        document.getElementById("companyName").value = preset.name || "";
+        document.getElementById("companyAddress").value = preset.address || "";
+        document.getElementById("companyPhone").value = preset.phone || "";
+        if (preset.email !== undefined) {
+            document.getElementById("companyEmail").value = preset.email;
+        }
+        if (preset.website !== undefined) {
+            document.getElementById("companyWebsite").value = preset.website;
+        }
+    }
+    updateInvoice();
+}
+
+function initCompanyDefault() {
+    const cNameEl = document.getElementById("companyName");
+    if (cNameEl && !cNameEl.value) {
+        const defaultKey = "SELAMATVN TOUR AND TRAVEL";
+        const presetSelect = document.getElementById("companyPreset");
+        if (presetSelect) presetSelect.value = defaultKey;
+        onCompanyPresetChange(defaultKey);
+    }
+}
+
+const customerPresets = {
+    "FAIRYS HOLIDAY": {
+        name: "FAIRYS HOLIDAY",
+        prefix: "FRY",
+        address: "24-2, Jalan Tanjung SD 13/1, Bandar Sri Damansara, 52200 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia",
+        packages: []
+    },
+    "FAIRYS TRAVEL": {
+        name: "FAIRYS TRAVEL",
+        prefix: "FRY",
+        address: "24-2, Jalan Tanjung SD 13/1, Bandar Sri Damansara, 52200 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia",
+        packages: []
+    },
+    "HARAREI TRAVEL": {
+        name: "HARAREI TRAVEL",
+        prefix: "HR",
+        address: "B-1-22, Savanna Lifestyle Retails, Jalan BBLS 2, Bandar Baru Lembah Selatan, 43800 Dengkil, Selangor, Malaysia",
+        trips: [
+            "5H4M HCM-DALAT-MUINE",
+            "4H3M HCM-DALAT-MUINE",
+            "4H3M PHU QUOC",
+            "5H4M PHU QUOC",
+            "4H3M DANANG",
+            "5H4M DANANG",
+            "5H4M HANOI SAPA HALONG BAY (DAY TRIP)",
+            "6H5M HANOI SAPA HALONG BAY (DAY TRIP)"
+        ],
+        packages: [
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M HCM-DALAT-MUINE", price: 750.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M HCM-DALAT-MUINE", price: 562.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M HCM-DALAT-MUINE", price: 375.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M HCM-DALAT-MUINE", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M HCM-DALAT-MUINE", price: 650.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M HCM-DALAT-MUINE", price: 487.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M HCM-DALAT-MUINE", price: 325.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M HCM-DALAT-MUINE", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M PHU QUOC", price: 750.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M PHU QUOC", price: 562.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M PHU QUOC", price: 375.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M PHU QUOC", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M PHU QUOC", price: 1250.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M PHU QUOC", price: 937.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M PHU QUOC", price: 625.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M PHU QUOC", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M DANANG", price: 800.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M DANANG", price: 600.00 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M DANANG", price: 400.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M DANANG", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M DANANG", price: 1100.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M DANANG", price: 825.00 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M DANANG", price: 550.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M DANANG", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1550.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1162.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 775.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1850.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1387.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 925.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 0.00 }
+        ]
+    },
+    "JOM TRAVEL": {
+        name: "JOM TRAVEL",
+        prefix: "JOM",
+        address: "1st Floor, Sublot 26, Lot 4220, Block 233, KNLD, Lee Ling Heights, 6 1/2 Mile, Jalan Penrissen, 6th Mile, 93250 Kuching, Sarawak, Malaysia",
+        trips: [
+            "5H4M HCM-DALAT-MUINE",
+            "4H3M HCM-DALAT-MUINE",
+            "4H3M PHU QUOC",
+            "5H4M PHU QUOC",
+            "4H3M DANANG",
+            "5H4M DANANG",
+            "5H4M HANOI SAPA HALONG BAY (DAY TRIP)",
+            "6H5M HANOI SAPA HALONG BAY (DAY TRIP)"
+        ],
+        packages: [
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M HCM-DALAT-MUINE", price: 750.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M HCM-DALAT-MUINE", price: 562.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M HCM-DALAT-MUINE", price: 375.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M HCM-DALAT-MUINE", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M HCM-DALAT-MUINE", price: 650.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M HCM-DALAT-MUINE", price: 487.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M HCM-DALAT-MUINE", price: 325.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M HCM-DALAT-MUINE", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M PHU QUOC", price: 750.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M PHU QUOC", price: 562.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M PHU QUOC", price: 375.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M PHU QUOC", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M PHU QUOC", price: 1250.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M PHU QUOC", price: 937.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M PHU QUOC", price: 625.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M PHU QUOC", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M DANANG", price: 900.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M DANANG", price: 675.00 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M DANANG", price: 450.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M DANANG", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M DANANG", price: 1100.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M DANANG", price: 825.00 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M DANANG", price: 550.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M DANANG", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1550.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1162.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 775.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1850.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1387.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 925.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 0.00 }
+        ]
+    },
+    "LANTERA TRAVEL": {
+        name: "LANTERA TRAVEL",
+        prefix: "LTR",
+        address: "Lot A-2-7A, Blok A, Ostia Bangi, Seksyen 14, 46350 Bangi, Selangor, Malaysia",
+        trips: [
+            "5H4M HCM-DALAT-MUINE",
+            "4H3M HCM-DALAT-MUINE",
+            "4H3M PHU QUOC",
+            "5H4M PHU QUOC",
+            "4H3M DANANG",
+            "5H4M DANANG",
+            "5H4M HANOI SAPA HALONG BAY"
+        ],
+        packages: [
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M HCM-DALAT-MUINE", price: 950.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M HCM-DALAT-MUINE", price: 712.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M HCM-DALAT-MUINE", price: 475.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M HCM-DALAT-MUINE", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M HCM-DALAT-MUINE", price: 750.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M HCM-DALAT-MUINE", price: 562.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M HCM-DALAT-MUINE", price: 375.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M HCM-DALAT-MUINE", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M PHU QUOC", price: 900.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M PHU QUOC", price: 675.00 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M PHU QUOC", price: 450.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M PHU QUOC", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M PHU QUOC", price: 1200.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M PHU QUOC", price: 900.00 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M PHU QUOC", price: 600.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M PHU QUOC", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M DANANG", price: 950.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M DANANG", price: 712.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M DANANG", price: 475.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M DANANG", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M DANANG", price: 1150.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M DANANG", price: 862.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M DANANG", price: 575.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M DANANG", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M HANOI SAPA HALONG BAY", price: 1650.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M HANOI SAPA HALONG BAY", price: 1237.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M HANOI SAPA HALONG BAY", price: 825.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M HANOI SAPA HALONG BAY", price: 0.00 }
+        ]
+    },
+    "MOOD TRAVEL": {
+        name: "MOOD TRAVEL",
+        prefix: "MD",
+        address: "FSG International Sdn Bhd, D-2-13A, Jalan 3B/6, Bangi Gateway 3B, Bandar Baru Bangi, Selangor",
+        trips: [
+            "5H4M HCM-DALAT-MUINE",
+            "4H3M HCM-DALAT-MUINE",
+            "4H3M PHU QUOC",
+            "5H4M PHU QUOC",
+            "4H3M DANANG",
+            "5H4M DANANG",
+            "5H4M HANOI SAPA HALONG BAY (DAY TRIP)",
+            "6H5M HANOI SAPA HALONG BAY (DAY TRIP)"
+        ],
+        packages: [
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M HCM-DALAT-MUINE", price: 750.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M HCM-DALAT-MUINE", price: 562.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M HCM-DALAT-MUINE", price: 375.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M HCM-DALAT-MUINE", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M HCM-DALAT-MUINE", price: 650.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M HCM-DALAT-MUINE", price: 487.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M HCM-DALAT-MUINE", price: 325.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M HCM-DALAT-MUINE", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M PHU QUOC", price: 750.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M PHU QUOC", price: 562.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M PHU QUOC", price: 375.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M PHU QUOC", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M PHU QUOC", price: 1250.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M PHU QUOC", price: 937.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M PHU QUOC", price: 625.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M PHU QUOC", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M DANANG", price: 800.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M DANANG", price: 600.00 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M DANANG", price: 400.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M DANANG", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M DANANG", price: 1100.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M DANANG", price: 825.00 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M DANANG", price: 550.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M DANANG", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1550.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1162.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 775.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1850.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1387.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 925.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 0.00 }
+        ]
+    },
+    "MUSLIM TRAVELBUG": {
+        name: "MUSLIM TRAVELBUG",
+        prefix: "MTB",
+        address: "C-21, Zeva Boulevard, Seri Kembangan, Selangor 43300, Malaysia",
+        trips: [
+            "5H4M HANOI - SAPA - HALONG BAY",
+            "4H3M DANANG - HOI AN",
+            "5H4M HCM - DALAT - MUINE",
+            "4H3M PHU QUOC"
+        ],
+        packages: [
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M HCM - DALAT - MUINE", price: 700.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M HCM - DALAT - MUINE", price: 525.00 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M HCM - DALAT - MUINE", price: 350.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M HCM - DALAT - MUINE", price: 0.00 },
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M HANOI - SAPA - HALONG BAY", price: 1550.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M HANOI - SAPA - HALONG BAY", price: 1162.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M HANOI - SAPA - HALONG BAY", price: 775.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M HANOI - SAPA - HALONG BAY", price: 0.00 },
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M DANANG - HOI AN", price: 800.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M DANANG - HOI AN", price: 600.00 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M DANANG - HOI AN", price: 400.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M DANANG - HOI AN", price: 0.00 },
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M PHU QUOC", price: 1000.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M PHU QUOC", price: 750.00 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M PHU QUOC", price: 500.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M PHU QUOC", price: 0.00 }
+        ]
+    }
+};
+
+function getAvailableTrips() {
+    const custName = (document.getElementById("customerName")?.value || "").trim();
+    const presetSelectVal = (document.getElementById("customerPreset")?.value || "").trim();
+
+    const companyKey = Object.keys(customerPresets).find(k =>
+        (presetSelectVal && k.toLowerCase() === presetSelectVal.toLowerCase()) ||
+        (custName && k.toLowerCase() === custName.toLowerCase())
+    );
+
+    if (companyKey && customerPresets[companyKey].trips && customerPresets[companyKey].trips.length > 0) {
+        return { company: companyKey, trips: customerPresets[companyKey].trips };
+    }
+
+    return { company: "", trips: [] };
+}
+
+function updateTripPresetUI() {
+    const { trips } = getAvailableTrips();
+    const dropdown = document.querySelector(".tripname-dropdown-menu");
+    if (!trips || trips.length === 0) {
+        if (dropdown) dropdown.style.display = "none";
+    }
+}
+
+function showTripNameDropdown(inputEl) {
+    const { trips } = getAvailableTrips();
+    const dropdown = inputEl.parentElement.querySelector(".tripname-dropdown-menu");
+    if (!dropdown) return;
+
+    if (!trips || trips.length === 0) {
+        dropdown.style.display = "none";
+        return;
+    }
+
+    renderTripNameDropdownItems(inputEl, dropdown, inputEl.value.trim());
+    dropdown.style.display = "block";
+}
+
+function renderTripNameDropdownItems(inputEl, dropdown, filterText = "") {
+    const { trips } = getAvailableTrips();
+    const q = filterText.toLowerCase();
+    const filtered = q ? trips.filter(t => t.toLowerCase().includes(q)) : trips;
+
+    if (filtered.length === 0) {
+        dropdown.innerHTML = `<div class="p-2 text-muted small text-center fst-italic">Custom trip (no preset match)</div>`;
+        return;
+    }
+
+    dropdown.innerHTML = filtered.map(trip => `
+        <div class="tripname-opt-item d-flex justify-content-between align-items-center p-2 border-bottom text-dark"
+            style="cursor: pointer;"
+            onmousedown="selectTripNameOption(this, '${trip.replace(/'/g, "\\'")}')">
+            <div class="pe-2 text-start" style="font-size: 11px; font-weight: 600; line-height: 1.35; word-break: break-word;">
+                <i class="fa-solid fa-plane-departure text-orange-500 me-1"></i> ${trip}
+            </div>
+            <span class="badge bg-light text-secondary border flex-shrink-0" style="font-size: 9px;">Preset</span>
+        </div>
+    `).join("");
+}
+
+function selectTripNameOption(itemEl, name) {
+    const inputEl = document.getElementById("tripName");
+    if (inputEl) inputEl.value = name;
+
+    const dropdown = document.querySelector(".tripname-dropdown-menu");
+    if (dropdown) dropdown.style.display = "none";
+
+    const currentCust = document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "";
+    document.querySelectorAll("#invoiceItems .item-row").forEach(row => {
+        const descEl = row.querySelector(".desc");
+        const priceEl = row.querySelector(".price");
+        const qtyEl = row.querySelector(".qty");
+        if (descEl && priceEl && descEl.value) {
+            const qty = parseInt(qtyEl?.value) || 1;
+            const dynamicPrice = calculateDynamicPackagePrice(descEl.value, name, qty, currentCust);
+            if (dynamicPrice !== null) {
+                priceEl.value = dynamicPrice.toFixed(2);
+            }
+        }
+    });
+
+    updatePackagePresetUI();
+    updateInvoice();
+}
+
+function onTripNameInput(inputEl) {
+    const dropdown = inputEl.parentElement.querySelector(".tripname-dropdown-menu");
+    const { trips } = getAvailableTrips();
+
+    if (dropdown && trips && trips.length > 0) {
+        renderTripNameDropdownItems(inputEl, dropdown, inputEl.value.trim());
+        dropdown.style.display = "block";
+    }
+    updatePackagePresetUI();
+    updateInvoice();
+}
+
+const consultantPresets = [
+    { name: "Series Trip", icon: "fa-solid fa-layer-group text-primary" },
+    { name: "Private Trip", icon: "fa-solid fa-user-shield text-success" }
+];
+
+function showConsultantDropdown(inputEl) {
+    const dropdown = inputEl.parentElement.querySelector(".consultant-dropdown-menu");
+    if (!dropdown) return;
+    renderConsultantDropdownItems(inputEl, dropdown, inputEl.value.trim());
+    dropdown.style.display = "block";
+}
+
+function renderConsultantDropdownItems(inputEl, dropdown, filterText = "") {
+    const q = filterText.toLowerCase();
+    const filtered = q ? consultantPresets.filter(c => c.name.toLowerCase().includes(q)) : consultantPresets;
+
+    if (filtered.length === 0) {
+        dropdown.innerHTML = `<div class="p-2 text-muted small text-center fst-italic">Custom consultant / trip type</div>`;
+        return;
+    }
+
+    dropdown.innerHTML = filtered.map(item => `
+        <div class="consultant-opt-item d-flex justify-content-between align-items-center p-2 border-bottom text-dark"
+            style="cursor: pointer;"
+            onmousedown="selectConsultantOption('${item.name.replace(/'/g, "\\'")}')">
+            <div class="pe-2 text-start" style="font-size: 11px; font-weight: 600; line-height: 1.35;">
+                <i class="${item.icon} me-2"></i> ${item.name}
+            </div>
+            <span class="badge bg-light text-secondary border flex-shrink-0" style="font-size: 9px;">Select</span>
+        </div>
+    `).join("");
+}
+
+function selectConsultantOption(val) {
+    const inputEl = document.getElementById("tripConsultant");
+    if (inputEl) {
+        inputEl.value = val;
+    }
+    const dropdown = document.querySelector(".consultant-dropdown-menu");
+    if (dropdown) dropdown.style.display = "none";
+    updateInvoice();
+}
+
+function onConsultantInput(inputEl) {
+    const dropdown = inputEl.parentElement.querySelector(".consultant-dropdown-menu");
+    if (dropdown) {
+        renderConsultantDropdownItems(inputEl, dropdown, inputEl.value.trim());
+        dropdown.style.display = "block";
+    }
+    updateInvoice();
+}
+
+// Muslim Travelbug adult pricing
+function getHcmDalatMuineAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 1650.00;
+    if (p <= 5) return 1150.00;
+    if (p <= 9) return 1000.00;
+    if (p <= 14) return 780.00;
+    return 700.00;
+}
+
+function getDanangAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 1390.00;
+    if (p <= 5) return 1050.00;
+    if (p <= 9) return 900.00;
+    if (p <= 14) return 850.00;
+    return 800.00;
+}
+
+function getHanoiAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 2300.00;
+    if (p <= 5) return 1850.00;
+    if (p <= 9) return 1650.00;
+    if (p <= 14) return 1600.00;
+    return 1550.00;
+}
+
+function getPhuQuocAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 1600.00;
+    if (p <= 5) return 1200.00;
+    if (p <= 9) return 1100.00;
+    if (p <= 14) return 1050.00;
+    return 1000.00;
+}
+
+// Lantera Travel adult pricing
+function getLanteraHcm5dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 2) return 1800.00;
+    if (p <= 4) return 1450.00;
+    if (p <= 6) return 1350.00;
+    if (p <= 8) return 1250.00;
+    if (p <= 10) return 1150.00;
+    if (p <= 12) return 1050.00;
+    if (p <= 15) return 1000.00;
+    if (p <= 20) return 950.00;
+    return 900.00; // 21-31 and 32+ are 900
+}
+
+function getLanteraHcm4dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 2) return 1600.00;
+    if (p <= 4) return 1250.00;
+    if (p <= 6) return 1150.00;
+    if (p <= 8) return 1000.00;
+    if (p <= 10) return 900.00;
+    if (p <= 12) return 850.00;
+    if (p <= 15) return 800.00;
+    if (p <= 20) return 750.00;
+    return 700.00; // 21+ is 700
+}
+
+function getLanteraPhuQuoc4dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 2) return 1650.00;
+    if (p <= 3) return 1350.00;
+    if (p <= 5) return 1250.00;
+    if (p <= 8) return 1200.00;
+    if (p <= 10) return 1100.00;
+    if (p <= 12) return 1050.00;
+    if (p <= 14) return 1000.00;
+    if (p <= 15) return 950.00;
+    if (p <= 31) return 900.00;
+    return 750.00; // 32+ is 750
+}
+
+function getLanteraPhuQuoc5dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 2) return 1950.00;
+    if (p <= 3) return 1650.00;
+    if (p <= 5) return 1550.00;
+    if (p <= 8) return 1500.00;
+    if (p <= 10) return 1400.00;
+    if (p <= 12) return 1350.00;
+    if (p <= 14) return 1300.00;
+    if (p <= 15) return 1250.00;
+    if (p <= 31) return 1200.00;
+    return 1050.00; // 32+ is 1050
+}
+
+function getLanteraDanang4dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 1750.00;
+    if (p <= 5) return 1550.00;
+    if (p <= 7) return 1450.00;
+    if (p <= 9) return 1250.00;
+    if (p <= 15) return 1100.00;
+    return 950.00; // 16+ is 950
+}
+
+function getLanteraDanang5dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 1900.00;
+    if (p <= 5) return 1700.00;
+    if (p <= 7) return 1600.00;
+    if (p <= 9) return 1400.00;
+    if (p <= 15) return 1250.00;
+    return 1150.00; // 16+ is 1150
+}
+
+function getLanteraHanoiAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 2350.00;
+    if (p <= 5) return 2000.00;
+    if (p <= 7) return 1950.00;
+    if (p <= 9) return 1850.00;
+    if (p <= 11) return 1800.00;
+    if (p <= 15) return 1750.00;
+    if (p <= 20) return 1650.00;
+    if (p <= 31) return 1600.00;
+    return 1550.00; // 32+ is 1550
+}
+
+// Jom Travel adult pricing
+function getJomHcm5dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 2) return 1750.00;
+    if (p <= 4) return 1250.00;
+    if (p <= 6) return 920.00;
+    if (p <= 8) return 880.00;
+    if (p <= 10) return 850.00;
+    if (p <= 12) return 820.00;
+    if (p <= 15) return 780.00;
+    return 750.00; // 16+
+}
+
+function getJomHcm4dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 2) return 1550.00;
+    if (p <= 4) return 1000.00;
+    if (p <= 6) return 850.00;
+    if (p <= 8) return 800.00;
+    if (p <= 10) return 750.00;
+    if (p <= 12) return 730.00;
+    if (p <= 15) return 700.00;
+    return 650.00; // 16+
+}
+
+function getJomPhuQuoc4dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 2) return 1500.00;
+    if (p <= 4) return 1200.00;
+    if (p <= 6) return 1150.00;
+    if (p <= 8) return 1050.00;
+    if (p <= 10) return 900.00;
+    if (p <= 12) return 850.00;
+    if (p <= 15) return 800.00;
+    return 750.00; // 16+ (16-31 and 32+ are 750)
+}
+
+function getJomPhuQuoc5dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 1950.00;
+    if (p <= 5) return 1650.00;
+    if (p <= 9) return 1420.00;
+    if (p <= 14) return 1300.00;
+    return 1250.00; // 15+
+}
+
+function getJomDanang4dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 1550.00;
+    if (p <= 5) return 1300.00;
+    if (p <= 7) return 1100.00;
+    if (p <= 10) return 1000.00;
+    if (p <= 14) return 960.00;
+    return 900.00; // 15+ (15-29 and 30+ are 900)
+}
+
+function getJomDanang5dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 1850.00;
+    if (p <= 5) return 1750.00;
+    if (p <= 7) return 1400.00;
+    if (p <= 10) return 1300.00;
+    if (p <= 14) return 1200.00;
+    return 1100.00; // 15+ (15-29 and 30+ are 1100)
+}
+
+function getJomHanoi5dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 2300.00;
+    if (p <= 5) return 1850.00;
+    if (p <= 7) return 1800.00;
+    if (p <= 9) return 1750.00;
+    if (p <= 11) return 1700.00;
+    if (p <= 15) return 1650.00;
+    if (p <= 20) return 1550.00;
+    if (p <= 31) return 1500.00;
+    return 1450.00; // 32+ (typo 14500 is 1450.00)
+}
+
+function getJomHanoi6dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 2950.00;
+    if (p <= 5) return 2500.00;
+    if (p <= 9) return 2100.00;
+    if (p <= 14) return 2000.00;
+    return 1850.00; // 15+
+}
+
+// Hararei Travel Danang adult pricing
+function getHarareiDanang4dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 1550.00;
+    if (p <= 5) return 1250.00;
+    if (p <= 7) return 1000.00;
+    if (p <= 10) return 900.00;
+    if (p <= 14) return 860.00;
+    if (p <= 29) return 800.00;
+    return 750.00; // 30+ is 750
+}
+
+function getHarareiDanang5dAdultPrice(pax) {
+    const p = parseInt(pax) || 1;
+    if (p <= 3) return 1750.00;
+    if (p <= 5) return 1650.00;
+    if (p <= 7) return 1300.00;
+    if (p <= 10) return 1200.00;
+    if (p <= 14) return 1150.00;
+    return 1100.00; // 15+ (15-29 and 30+ are 1100)
+}
+
+function getFocCount(customerKeyOrName, tripName, qty) {
+    const q = parseInt(qty) || 0;
+    if (q <= 0) return 0;
+    const cust = (customerKeyOrName || "").toUpperCase();
+    const cleanTrip = (tripName || "").toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    if (cust.includes("JOM") || cust.includes("HARAREI") || cust === "HR" || cust.includes("MOOD") || cust === "MD") {
+        if (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine")) {
+            return 0; // No FOC for HCM
+        }
+        if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
+            if (cleanTrip.includes("5h4m")) {
+                if (q >= 32) return 2;
+                if (q >= 15) return 1;
+                return 0;
+            } else {
+                if (q >= 32) return 2;
+                if (q >= 16) return 1;
+                return 0;
+            }
+        }
+        if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
+            if (q >= 30) return 2;
+            if (q >= 15) return 1;
+            return 0;
+        }
+        if (cleanTrip.includes("6h5m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
+            if (q >= 15) return 1;
+            return 0;
+        }
+        if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
+            if (q >= 32) return 2;
+            if (q >= 16) return 1;
+            return 0;
+        }
+        if (q >= 32) return 2;
+        if (q >= 16) return 1;
+        return 0;
+    }
+
+    if (cust.includes("LANTERA") || cust === "LTR") {
+        if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
+            if (q >= 32) return 2;
+            if (q >= 16) return 1;
+            return 0;
+        }
+        if (cleanTrip.includes("4h3m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
+            if (q >= 16) return 1;
+            return 0;
+        }
+        if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
+            if (q >= 32) return 2;
+            if (q >= 16) return 1;
+            return 0;
+        }
+        if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
+            if (q >= 16) return 1;
+            return 0;
+        }
+        if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
+            if (q >= 32) return 2;
+            if (q >= 16) return 1;
+            return 0;
+        }
+        if (q >= 32) return 2;
+        if (q >= 16) return 1;
+        return 0;
+    }
+
+    if (cust.includes("MUSLIM") || cust.includes("TRAVELBUG") || cust === "MTB") {
+        if (q >= 15) return 1;
+        return 0;
+    }
+
+    // Default: If user did not choose an existing company name with FOC rules, do not auto FOC
+    return 0;
+}
+
+function calculateDynamicPackagePrice(pkgName, tripName, pax, customCustomer = "") {
+    const cust = (customCustomer || (typeof document !== "undefined" ? (document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "") : "")).toUpperCase();
+    const clean = s => (s || "").toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanTrip = clean(tripName);
+    const cleanPkg = clean(pkgName);
+
+    let adultPrice = null;
+
+    if (cust.includes("HARAREI") || cust === "HR" || cust.includes("MOOD") || cust === "MD") {
+        // HARAREI TRAVEL
+        // 1. 5H4M HCM-DALAT-MUINE
+        if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
+            adultPrice = getJomHcm5dAdultPrice(pax);
+        }
+        // 2. 4H3M HCM-DALAT-MUINE
+        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
+            adultPrice = getJomHcm4dAdultPrice(pax);
+        }
+        // 3. 4H3M PHU QUOC
+        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
+            adultPrice = getJomPhuQuoc4dAdultPrice(pax);
+        }
+        // 4. 5H4M PHU QUOC
+        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
+            adultPrice = getJomPhuQuoc5dAdultPrice(pax);
+        }
+        // 5. 4H3M DANANG (Hararei specific rates)
+        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
+            adultPrice = getHarareiDanang4dAdultPrice(pax);
+        }
+        // 6. 5H4M DANANG (Hararei specific rates)
+        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
+            adultPrice = getHarareiDanang5dAdultPrice(pax);
+        }
+        // 7. 6H5M HANOI SAPA HALONG BAY
+        else if (cleanTrip.includes("6h5m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
+            adultPrice = getJomHanoi6dAdultPrice(pax);
+        }
+        // 8. 5H4M HANOI SAPA HALONG BAY
+        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
+            adultPrice = getJomHanoi5dAdultPrice(pax);
+        }
+        // Fallbacks
+        else if (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine")) {
+            adultPrice = getJomHcm5dAdultPrice(pax);
+        }
+        else if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
+            adultPrice = getJomPhuQuoc4dAdultPrice(pax);
+        }
+        else if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
+            adultPrice = getHarareiDanang4dAdultPrice(pax);
+        }
+        else if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
+            adultPrice = getJomHanoi5dAdultPrice(pax);
+        }
+    } else if (cust.includes("JOM")) {
+        // JOM TRAVEL
+        // 1. 5H4M HCM-DALAT-MUINE
+        if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
+            adultPrice = getJomHcm5dAdultPrice(pax);
+        }
+        // 2. 4H3M HCM-DALAT-MUINE
+        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
+            adultPrice = getJomHcm4dAdultPrice(pax);
+        }
+        // 3. 4H3M PHU QUOC
+        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
+            adultPrice = getJomPhuQuoc4dAdultPrice(pax);
+        }
+        // 4. 5H4M PHU QUOC
+        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
+            adultPrice = getJomPhuQuoc5dAdultPrice(pax);
+        }
+        // 5. 4H3M DANANG
+        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
+            adultPrice = getJomDanang4dAdultPrice(pax);
+        }
+        // 6. 5H4M DANANG
+        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
+            adultPrice = getJomDanang5dAdultPrice(pax);
+        }
+        // 7. 6H5M HANOI SAPA HALONG BAY
+        else if (cleanTrip.includes("6h5m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
+            adultPrice = getJomHanoi6dAdultPrice(pax);
+        }
+        // 8. 5H4M HANOI SAPA HALONG BAY
+        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
+            adultPrice = getJomHanoi5dAdultPrice(pax);
+        }
+        // Fallbacks
+        else if (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine")) {
+            adultPrice = getJomHcm5dAdultPrice(pax);
+        }
+        else if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
+            adultPrice = getJomPhuQuoc4dAdultPrice(pax);
+        }
+        else if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
+            adultPrice = getJomDanang4dAdultPrice(pax);
+        }
+        else if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
+            adultPrice = getJomHanoi5dAdultPrice(pax);
+        }
+    } else if (cust.includes("LANTERA") || cust === "LTR") {
+        // 1. 5H4M HCM-DALAT-MUINE
+        if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
+            adultPrice = getLanteraHcm5dAdultPrice(pax);
+        }
+        // 2. 4H3M HCM-DALAT-MUINE
+        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
+            adultPrice = getLanteraHcm4dAdultPrice(pax);
+        }
+        // 3. 4H3M PHU QUOC
+        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
+            adultPrice = getLanteraPhuQuoc4dAdultPrice(pax);
+        }
+        // 4. 5H4M PHU QUOC
+        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
+            adultPrice = getLanteraPhuQuoc5dAdultPrice(pax);
+        }
+        // 5. 4H3M DANANG
+        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
+            adultPrice = getLanteraDanang4dAdultPrice(pax);
+        }
+        // 6. 5H4M DANANG
+        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
+            adultPrice = getLanteraDanang5dAdultPrice(pax);
+        }
+        // 7. 5H4M HANOI SAPA HALONG BAY
+        else if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
+            adultPrice = getLanteraHanoiAdultPrice(pax);
+        }
+        // Fallbacks
+        else if (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine")) {
+            adultPrice = getLanteraHcm5dAdultPrice(pax);
+        }
+        else if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
+            adultPrice = getLanteraPhuQuoc4dAdultPrice(pax);
+        }
+        else if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
+            adultPrice = getLanteraDanang4dAdultPrice(pax);
+        }
+    } else {
+        // MUSLIM TRAVELBUG & Default
+        if (cleanTrip.includes("hcm") || (cleanTrip.includes("dalat") && cleanTrip.includes("muine"))) {
+            adultPrice = getHcmDalatMuineAdultPrice(pax);
+        }
+        else if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
+            adultPrice = getDanangAdultPrice(pax);
+        }
+        else if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
+            adultPrice = getHanoiAdultPrice(pax);
+        }
+        else if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
+            adultPrice = getPhuQuocAdultPrice(pax);
+        }
+    }
+
+    if (adultPrice !== null) {
+        if (cleanPkg.includes("infant")) {
+            return 0.00;
+        }
+        if (cleanPkg.includes("child") && cleanPkg.includes("nobed")) {
+            return parseFloat((adultPrice * 0.50).toFixed(2));
+        }
+        if (cleanPkg.includes("child") && cleanPkg.includes("bed")) {
+            return parseFloat((adultPrice * 0.75).toFixed(2));
+        }
+        if (cleanPkg.includes("adult") || cleanPkg.includes("groundpackage")) {
+            return adultPrice;
+        }
+    }
+    return null;
+}
+
+function calculateMuslimTravelbugPrice(pkgName, tripName, pax, custName = "") {
+    return calculateDynamicPackagePrice(pkgName, tripName, pax, custName);
+}
+
+function getAvailablePackages() {
+    const custName = (document.getElementById("customerName")?.value || "").trim();
+    const presetSelectVal = (document.getElementById("customerPreset")?.value || "").trim();
+
+    const companyKey = Object.keys(customerPresets).find(k =>
+        (presetSelectVal && k.toLowerCase() === presetSelectVal.toLowerCase()) ||
+        (custName && k.toLowerCase() === custName.toLowerCase())
+    );
+
+    if (companyKey && customerPresets[companyKey].packages && customerPresets[companyKey].packages.length > 0) {
+        let pkgs = customerPresets[companyKey].packages;
+        const tripName = (document.getElementById("tripName")?.value || "").trim();
+        const currentPax = parseInt(document.getElementById("tripPax")?.value) || 15;
+
+        if (tripName) {
+            const clean = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+            const cleanTrip = clean(tripName);
+
+            if (cleanTrip) {
+                let matched = pkgs.filter(p => {
+                    const cleanTripProp = p.trip ? clean(p.trip) : "";
+                    const cleanPkgName = clean(p.name);
+                    return (cleanTripProp && (cleanTripProp.includes(cleanTrip) || cleanTrip.includes(cleanTripProp))) ||
+                           cleanPkgName.includes(cleanTrip);
+                });
+
+                if (matched.length === 0) {
+                    const tokens = tripName.toLowerCase().split(/[\s\-:]+/).filter(t => t.length > 1);
+                    if (tokens.length > 0) {
+                        matched = pkgs.filter(p => {
+                            const pText = ((p.trip || "") + " " + p.name).toLowerCase();
+                            return tokens.every(tok => pText.includes(tok));
+                        });
+                    }
+                }
+
+                if (matched.length > 0) {
+                    const dynamicPkgs = matched.map(p => {
+                        const dynamicPrice = calculateDynamicPackagePrice(p.name, p.trip || tripName, currentPax, companyKey);
+                        return {
+                            ...p,
+                            price: dynamicPrice !== null ? dynamicPrice : p.price
+                        };
+                    });
+                    return { company: companyKey, packages: dynamicPkgs, selectedTrip: tripName };
+                }
+            }
+        }
+
+        const dynamicPkgs = pkgs.map(p => {
+            const dynamicPrice = calculateDynamicPackagePrice(p.name, p.trip || tripName, currentPax, companyKey);
+            return {
+                ...p,
+                price: dynamicPrice !== null ? dynamicPrice : p.price
+            };
+        });
+
+        return { company: companyKey, packages: dynamicPkgs, selectedTrip: tripName };
+    }
+
+    return { company: "", packages: [], selectedTrip: "" };
+}
+
+function updatePackagePresetUI() {
+    const { packages } = getAvailablePackages();
+    if (!packages || packages.length === 0) {
+        document.querySelectorAll(".package-dropdown-menu").forEach(d => d.style.display = "none");
+    }
+}
+
+function showPackageDropdown(inputEl) {
+    const { packages } = getAvailablePackages();
+    const dropdown = inputEl.parentElement.querySelector(".package-dropdown-menu");
+    if (!dropdown) return;
+
+    if (!packages || packages.length === 0) {
+        dropdown.style.display = "none";
+        return;
+    }
+
+    renderPackageDropdownItems(inputEl, dropdown, inputEl.value.trim());
+    dropdown.style.display = "block";
+}
+
+function getPackageIcon(pkgName) {
+    const clean = (pkgName || "").toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (clean.includes("infant") || clean.includes("baby")) {
+        return `<span class="d-inline-flex align-items-center justify-content-center px-1" style="font-size: 15px;" title="Infant"><i class="fa-solid fa-baby" style="color: #d63384;"></i></span>`;
+    }
+    if (clean.includes("child") && (clean.includes("bed") || clean.includes("withbed")) && !clean.includes("nobed")) {
+        return `<span class="d-inline-flex align-items-center justify-content-center gap-1 px-1" style="font-size: 15px;" title="Child With Bed"><i class="fa-solid fa-child" style="color: #0dcaf0;"></i><i class="fa-solid fa-bed" style="color: #0dcaf0; font-size: 12px;"></i></span>`;
+    }
+    if (clean.includes("child")) {
+        return `<span class="d-inline-flex align-items-center justify-content-center px-1" style="font-size: 15px;" title="Child No Bed"><i class="fa-solid fa-child" style="color: #0dcaf0;"></i></span>`;
+    }
+    if (clean.includes("adult")) {
+        return `<span class="d-inline-flex align-items-center justify-content-center px-1" style="font-size: 15px;" title="Adult"><i class="fa-solid fa-user" style="color: #0d6efd;"></i></span>`;
+    }
+    return `<span class="d-inline-flex align-items-center justify-content-center px-1" style="font-size: 15px;" title="Package"><i class="fa-solid fa-box text-warning"></i></span>`;
+}
+
+function renderPackageDropdownItems(inputEl, dropdown, filterText = "") {
+    const { packages, selectedTrip } = getAvailablePackages();
+    const q = filterText.toLowerCase();
+    const filtered = q ? packages.filter(p => p.name.toLowerCase().includes(q) || (p.trip && p.trip.toLowerCase().includes(q))) : packages;
+
+    if (filtered.length === 0) {
+        dropdown.innerHTML = `<div class="p-2 text-muted small text-center fst-italic">No matching package preset</div>`;
+        return;
+    }
+
+    dropdown.innerHTML = filtered.map(pkg => {
+        const tripBadge = (!selectedTrip && pkg.trip) ? `<span class="badge bg-light text-muted border ms-1" style="font-size: 9px;">${pkg.trip}</span>` : "";
+        const iconHtml = getPackageIcon(pkg.name);
+        return `
+        <div class="package-opt-item d-flex justify-content-between align-items-center p-2 border-bottom text-dark"
+            style="cursor: pointer;"
+            onmousedown="selectPackageOption(this, '${pkg.name.replace(/'/g, "\\'")}', ${pkg.price}, '${(pkg.trip || '').replace(/'/g, "\\'")}')">
+            <div class="pe-2 text-start" style="font-size: 11px; font-weight: 600; line-height: 1.35; word-break: break-word;">
+                ${pkg.name} ${tripBadge}
+            </div>
+            <div class="flex-shrink-0 text-end ps-2">
+                ${iconHtml}
+            </div>
+        </div>
+        `;
+    }).join("");
+}
+
+function selectPackageOption(itemEl, name, price, trip = "") {
+    const container = itemEl.closest(".position-relative");
+    const row = itemEl.closest(".item-row");
+    if (!container || !row) return;
+
+    const inputEl = container.querySelector(".desc");
+    if (inputEl) inputEl.value = name;
+
+    const qtyInput = row.querySelector(".qty");
+    const defaultPax = parseInt(document.getElementById("tripPax")?.value) || 1;
+    if (qtyInput && (qtyInput.value === "1" || qtyInput.value === "") && defaultPax > 1) {
+        qtyInput.value = defaultPax;
+    }
+
+    const tripNameEl = document.getElementById("tripName");
+    if (tripNameEl && !tripNameEl.value && trip) {
+        tripNameEl.value = trip;
+    }
+
+    const currentCust = document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "";
+    const currentTrip = tripNameEl?.value || trip;
+    const currentPax = parseInt(qtyInput?.value) || defaultPax;
+    const dynamicPrice = calculateDynamicPackagePrice(name, currentTrip, currentPax, currentCust);
+
+    const priceInput = row.querySelector(".price");
+    if (priceInput) {
+        priceInput.value = dynamicPrice !== null ? dynamicPrice.toFixed(2) : parseFloat(price).toFixed(2);
+    }
+
+    const dropdown = container.querySelector(".package-dropdown-menu");
+    if (dropdown) dropdown.style.display = "none";
+
+    updateInvoice();
+}
+
+function onPackageDescInput(inputEl) {
+    const dropdown = inputEl.parentElement.querySelector(".package-dropdown-menu");
+    const { packages } = getAvailablePackages();
+
+    if (dropdown && packages && packages.length > 0) {
+        renderPackageDropdownItems(inputEl, dropdown, inputEl.value.trim());
+        dropdown.style.display = "block";
+    }
+
+    const val = inputEl.value.trim().toLowerCase();
+    const row = inputEl.closest(".item-row");
+    if (row && val && packages) {
+        const matched = packages.find(p => p.name.toLowerCase() === val || (p.trip && (p.name + " " + p.trip).toLowerCase() === val));
+        if (matched) {
+            const currentCust = document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "";
+            const tripName = document.getElementById("tripName")?.value || (matched.trip || "");
+            const qtyInput = row.querySelector(".qty");
+            const defaultPax = parseInt(document.getElementById("tripPax")?.value) || 1;
+            if (qtyInput && (qtyInput.value === "1" || qtyInput.value === "") && defaultPax > 1) {
+                qtyInput.value = defaultPax;
+            }
+            const currentPax = parseInt(qtyInput?.value) || defaultPax;
+            const dynamicPrice = calculateDynamicPackagePrice(matched.name, tripName, currentPax, currentCust);
+
+            const priceInput = row.querySelector(".price");
+            if (priceInput) {
+                priceInput.value = dynamicPrice !== null ? dynamicPrice.toFixed(2) : parseFloat(matched.price).toFixed(2);
+            }
+        }
+    }
+    updateInvoice();
+}
+
+function onPackageQtyChange(qtyInput) {
+    const row = qtyInput.closest(".item-row");
+    if (!row) return;
+    const descEl = row.querySelector(".desc");
+    const priceEl = row.querySelector(".price");
+    const tripName = (document.getElementById("tripName")?.value || "").trim();
+    const currentCust = document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "";
+    const qty = parseInt(qtyInput.value) || 1;
+
+    if (descEl && priceEl && descEl.value) {
+        const dynamicPrice = calculateDynamicPackagePrice(descEl.value, tripName, qty, currentCust);
+        if (dynamicPrice !== null) {
+            priceEl.value = dynamicPrice.toFixed(2);
+        }
+    }
+}
+
+const addonPresets = [
+    { name: "Ticket VinWonders", price: 170.00 },
+    { name: "Vin Safari", price: 130.00 },
+    { name: "Ticket Cable Car", price: 130.00 }
+];
+
+function showAddonDropdown(inputEl) {
+    const dropdown = inputEl.parentElement.querySelector(".addon-dropdown-menu");
+    if (!dropdown) return;
+    renderAddonDropdownItems(inputEl, dropdown, inputEl.value.trim());
+    dropdown.style.display = "block";
+}
+
+function renderAddonDropdownItems(inputEl, dropdown, filterText = "") {
+    const q = filterText.toLowerCase();
+    const filtered = q ? addonPresets.filter(p => p.name.toLowerCase().includes(q)) : addonPresets;
+
+    if (filtered.length === 0) {
+        dropdown.innerHTML = `<div class="p-2 text-muted small text-center fst-italic">Custom add-on (no preset match)</div>`;
+        return;
+    }
+
+    dropdown.innerHTML = filtered.map(item => `
+        <div class="addon-opt-item d-flex justify-content-between align-items-center p-2 border-bottom text-dark"
+            style="cursor: pointer;"
+            onmousedown="selectAddonOption(this, '${item.name.replace(/'/g, "\\'")}', ${item.price})">
+            <div class="pe-2 text-start" style="font-size: 11px; font-weight: 600; line-height: 1.35; word-break: break-word;">
+                <i class="fa-solid fa-ticket text-orange-500 me-1"></i> ${item.name}
+            </div>
+            <span class="badge bg-warning text-dark flex-shrink-0" style="font-size: 10px;">
+                RM ${item.price.toFixed(2)}
+            </span>
+        </div>
+    `).join("");
+}
+
+function selectAddonOption(itemEl, name, price) {
+    const container = itemEl.closest(".position-relative");
+    const row = itemEl.closest(".item-row");
+    if (!container || !row) return;
+
+    const inputEl = container.querySelector(".desc");
+    if (inputEl) inputEl.value = name;
+
+    const priceInput = row.querySelector(".price");
+    if (priceInput) priceInput.value = parseFloat(price).toFixed(2);
+
+    const qtyInput = row.querySelector(".qty");
+    const defaultPax = parseInt(document.getElementById("tripPax")?.value) || 1;
+    if (qtyInput && (qtyInput.value === "1" || qtyInput.value === "") && defaultPax > 1) {
+        qtyInput.value = defaultPax;
+    }
+
+    const dropdown = container.querySelector(".addon-dropdown-menu");
+    if (dropdown) dropdown.style.display = "none";
+
+    updateInvoice();
+}
+
+function onAddonDescInput(inputEl) {
+    const dropdown = inputEl.parentElement.querySelector(".addon-dropdown-menu");
+    if (dropdown) {
+        renderAddonDropdownItems(inputEl, dropdown, inputEl.value.trim());
+        dropdown.style.display = "block";
+    }
+
+    const val = inputEl.value.trim().toLowerCase();
+    const row = inputEl.closest(".item-row");
+    if (row && val) {
+        const matched = addonPresets.find(p => p.name.toLowerCase() === val);
+        if (matched) {
+            const priceInput = row.querySelector(".price");
+            if (priceInput) priceInput.value = parseFloat(matched.price).toFixed(2);
+            const qtyInput = row.querySelector(".qty");
+            const defaultPax = parseInt(document.getElementById("tripPax")?.value) || 1;
+            if (qtyInput && (qtyInput.value === "1" || qtyInput.value === "") && defaultPax > 1) {
+                qtyInput.value = defaultPax;
+            }
+        }
+    }
+    updateInvoice();
+}
+
+function getCurrentYearMonth() {
+    const invDateVal = document.getElementById("invoiceDate")?.value;
+    if (invDateVal && /^\d{4}-\d{1,2}-\d{1,2}$/.test(invDateVal)) {
+        const parts = invDateVal.split("-");
+        return {
+            year: parts[0],
+            month: String(parts[1]).padStart(2, '0')
+        };
+    }
+    const d = new Date();
+    const year = d.getFullYear().toString();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    return { year, month };
+}
+
+function getCompanyPrefix(companyKeyOrName) {
+    if (!companyKeyOrName) return "INV";
+    const norm = companyKeyOrName.trim().toUpperCase();
+    if (norm.includes("MUSLIM TRAVELBUG") || norm === "MTB") return "MTB";
+    if (norm.includes("LANTERA") || norm === "LTR") return "LTR";
+    if (norm.includes("HARAREI") || norm === "HR") return "HR";
+    if (norm.includes("JOM") || norm === "JOM") return "JOM";
+    if (norm.includes("MOOD") || norm === "MD") return "MD";
+    if (norm.includes("FAIRY") || norm.includes("FAIRYS") || norm === "FRY") return "FRY";
+
+    const matchedKey = Object.keys(customerPresets).find(k => k.toLowerCase() === norm.toLowerCase());
+    if (matchedKey && customerPresets[matchedKey].prefix) {
+        return customerPresets[matchedKey].prefix;
+    }
+    return "INV";
+}
+
+function generateInvoiceNo(companyKeyOrName) {
+    const { year, month } = getCurrentYearMonth();
+    const prefix = getCompanyPrefix(companyKeyOrName);
+    return `${prefix}${year}${month}-01`;
+}
+
+let tripDatePicker = null;
+
+function initTripDatePicker() {
+    const el = document.getElementById("tripDate");
+    if (!el || typeof flatpickr === "undefined") return;
+
+    tripDatePicker = flatpickr(el, {
+        mode: "range",
+        dateFormat: "d-m-Y",
+        conjunction: " to ",
+        locale: {
+            rangeSeparator: " to "
+        },
+        allowInput: true,
+        onChange: function (selectedDates, dateStr, instance) {
+            updateInvoice();
+        },
+        onClose: function (selectedDates, dateStr, instance) {
+            updateInvoice();
+        }
+    });
+}
+
+function clearTripDate() {
+    if (tripDatePicker) {
+        tripDatePicker.clear();
+    } else {
+        const el = document.getElementById("tripDate");
+        if (el) el.value = "";
+    }
+    updateInvoice();
+}
+
+function initDefaultDates() {
+    const invDateEl = document.getElementById("invoiceDate");
+    if (invDateEl && !invDateEl.value) {
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        invDateEl.value = `${yyyy}-${mm}-${dd}`;
+    }
+    initTripDatePicker();
+}
+
+function onCustomerPresetChange(val) {
+    if (val && customerPresets[val]) {
+        const preset = customerPresets[val];
+        document.getElementById("customerName").value = preset.name;
+        document.getElementById("customerAddress").value = preset.address;
+        if (preset.social !== undefined) {
+            document.getElementById("customerSocial").value = preset.social;
+        }
+
+        // Auto-generate invoice number based on selected customer & detected current date (e.g. MTB202609-01)
+        const invNoEl = document.getElementById("invoiceNo");
+        if (invNoEl) {
+            invNoEl.value = generateInvoiceNo(val);
+        }
+
+        // Recalculate package rows
+        const tripName = document.getElementById("tripName")?.value || "";
+        document.querySelectorAll("#invoiceItems .item-row").forEach(row => {
+            const descEl = row.querySelector(".desc");
+            const priceEl = row.querySelector(".price");
+            const qtyEl = row.querySelector(".qty");
+            if (descEl && priceEl && descEl.value) {
+                const qty = parseInt(qtyEl?.value) || 1;
+                const dynamicPrice = calculateDynamicPackagePrice(descEl.value, tripName, qty, val);
+                if (dynamicPrice !== null) {
+                    priceEl.value = dynamicPrice.toFixed(2);
+                }
+            }
+        });
+    }
+    updateTripPresetUI();
+    updatePackagePresetUI();
+    updateInvoice();
+}
+
+function addRow(tableId, defaultDesc = "", defaultPrice = 0, defaultQty = null) {
+    const isPackage = tableId === 'invoiceItems';
+    const tripPaxVal = parseInt(document.getElementById("tripPax")?.value) || 1;
+    const initialQty = defaultQty !== null ? defaultQty : (isPackage ? tripPaxVal : 1);
+    const initialPrice = defaultPrice ? parseFloat(defaultPrice).toFixed(2) : "0.00";
+
+    let descInputHtml = "";
+    if (isPackage) {
+        descInputHtml = `
+        <div class="position-relative mb-3">
+            <input type="text" 
+                class="desc form-control form-control-sm" 
+                placeholder="Select or type package name..." 
+                value="${defaultDesc.replace(/"/g, '&quot;')}" 
+                onfocus="showPackageDropdown(this)"
+                onclick="showPackageDropdown(this)"
+                oninput="onPackageDescInput(this)"
+                autocomplete="off">
+            <div class="package-dropdown-menu shadow-lg rounded border bg-white position-absolute w-100 mt-1" 
+                 style="display: none; z-index: 1060; max-height: 190px; overflow-y: auto; left: 0; top: 100%;">
+            </div>
+        </div>
+        `;
+    } else {
+        descInputHtml = `
+        <div class="position-relative mb-3">
+            <input type="text" 
+                class="desc form-control form-control-sm" 
+                placeholder="Select or type add-on / service (e.g. Ticket VinWonders)..." 
+                value="${defaultDesc.replace(/"/g, '&quot;')}" 
+                onfocus="showAddonDropdown(this)"
+                onclick="showAddonDropdown(this)"
+                oninput="onAddonDescInput(this)"
+                autocomplete="off">
+            <div class="addon-dropdown-menu shadow-lg rounded border bg-white position-absolute w-100 mt-1" 
+                 style="display: none; z-index: 1060; max-height: 190px; overflow-y: auto; left: 0; top: 100%;">
+            </div>
+        </div>
+        `;
+    }
+
     let row = `
     <div class="item-row card mb-3 shadow-sm border-0 bg-light">
         <div class="card-body p-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <label class="form-label small fw-bold text-secondary text-uppercase mb-0">Item Description</label>
+                <label class="form-label small fw-bold text-secondary text-uppercase mb-0">${isPackage ? 'Package Description' : 'Item Description'}</label>
                 <button type="button" onclick="removeRow(this)" class="btn btn-sm btn-link text-danger p-0 text-decoration-none" title="Remove Item"><i class="fa-solid fa-trash-can"></i></button>
             </div>
-            <input type="text" class="desc form-control form-control-sm mb-3" placeholder="e.g. Flight Ticket" oninput="updateInvoice()">
+            ${descInputHtml}
             
             <div class="row g-2 align-items-end">
                 <div class="col">
                     <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Unit Price</label>
-                    <input type="number" class="price form-control form-control-sm" value="0.00" min="0" step="0.01" oninput="updateInvoice()">
+                    <input type="number" class="price form-control form-control-sm" value="${initialPrice}" min="0" step="0.01" oninput="updateInvoice()">
                 </div>
                 <div class="col-4">
                     <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Qty</label>
-                    <input type="number" class="qty form-control form-control-sm text-center" value="1" min="1" oninput="updateInvoice()">
+                    <input type="number" class="qty form-control form-control-sm text-center" value="${initialQty}" min="1" oninput="${isPackage ? 'onPackageQtyChange(this); ' : ''}updateInvoice()">
                 </div>
                 <div class="col-auto text-end" style="min-width: 80px;">
                     <span class="d-block small fw-bold text-secondary text-uppercase mb-1">Total</span>
@@ -68,18 +1461,85 @@ function removeSocialRow(btn) {
     updateInvoice();
 }
 
+function parseDateParts(str) {
+    if (!str) return null;
+    str = String(str).trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+        const [year, month, day] = str.split('-');
+        return { day, month, year };
+    }
+    if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
+        const [day, month, year] = str.split('-');
+        return { day, month, year };
+    }
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = String(d.getFullYear());
+        return { day, month, year };
+    }
+    return null;
+}
+
+function formatDateRange(startStr, endStr) {
+    const d1 = parseDateParts(startStr);
+    const d2 = parseDateParts(endStr);
+
+    if (!d1 && !d2) return '-';
+    if (d1 && !d2) return `${d1.day}-${d1.month}-${d1.year}`;
+    if (!d1 && d2) return `${d2.day}-${d2.month}-${d2.year}`;
+
+    // If same date
+    if (d1.day === d2.day && d1.month === d2.month && d1.year === d2.year) {
+        return `${d1.day}-${d1.month}-${d1.year}`;
+    }
+
+    // If same month and same year: e.g. "15 to 17-09-2026"
+    if (d1.month === d2.month && d1.year === d2.year) {
+        return `${d1.day} to ${d2.day}-${d2.month}-${d2.year}`;
+    }
+
+    // If same year, different month: e.g. "28-09 to 02-10-2026"
+    if (d1.year === d2.year) {
+        return `${d1.day}-${d1.month} to ${d2.day}-${d2.month}-${d2.year}`;
+    }
+
+    // Different year: e.g. "28-12-2026 to 03-01-2027"
+    return `${d1.day}-${d1.month}-${d1.year} to ${d2.day}-${d2.month}-${d2.year}`;
+}
+
 function formatDate(dateString) {
     if (!dateString) return '-';
-    if (typeof dateString === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
-        const [year, month, day] = dateString.split('-');
-        return `${day}-${month}-${year}`;
+    if (typeof dateString !== 'string') {
+        const d = parseDateParts(dateString);
+        return d ? `${d.day}-${d.month}-${d.year}` : '-';
     }
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
+
+    const s = dateString.trim();
+    if (!s) return '-';
+
+    // Handle range with ' to '
+    if (s.includes(' to ')) {
+        const parts = s.split(' to ').map(p => p.trim()).filter(Boolean);
+        if (parts.length === 2) {
+            return formatDateRange(parts[0], parts[1]);
+        } else if (parts.length === 1) {
+            const d = parseDateParts(parts[0]);
+            return d ? `${d.day}-${d.month}-${d.year}` : parts[0];
+        }
+    }
+
+    // Handle range with ' - ' (avoiding standard YYYY-MM-DD or DD-MM-YYYY)
+    if (s.includes(' - ') && !/^\d{4}-\d{2}-\d{2}$/.test(s) && !/^\d{2}-\d{2}-\d{4}$/.test(s)) {
+        const parts = s.split(' - ').map(p => p.trim()).filter(Boolean);
+        if (parts.length === 2) {
+            return formatDateRange(parts[0], parts[1]);
+        }
+    }
+
+    const d = parseDateParts(s);
+    return d ? `${d.day}-${d.month}-${d.year}` : s;
 }
 
 function updateInvoice() {
@@ -178,6 +1638,9 @@ function updateInvoice() {
     let html = "";
     let idx = 1;
 
+    let currentCust = document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "";
+    let currentTrip = document.getElementById("tripName")?.value || "";
+
     // Packages
     if (pkgRows.length > 0) {
         html += `<tr class="cat-row"><td colspan="5"><i class="fa-solid fa-suitcase"></i> PACKAGE</td></tr>`;
@@ -185,11 +1648,33 @@ function updateInvoice() {
             let desc = row.querySelector(".desc").value;
             let price = parseFloat(row.querySelector(".price").value) || 0;
             let qty = parseInt(row.querySelector(".qty").value) || 0;
-            let total = price * qty;
+
+            let focCount = getFocCount(currentCust, currentTrip, qty);
+            let isFoc = focCount > 0 && price > 0;
+            let chargeableQty = isFoc ? Math.max(0, qty - focCount) : qty;
+            let total = price * chargeableQty;
             subtotal += total;
             row.querySelector(".lineTotal").innerText = total.toFixed(2);
 
-            html += `<tr><td>${idx++}</td><td>${desc}</td><td>${qty} Pax</td><td>${price.toFixed(2)}</td><td>${total.toFixed(2)}</td></tr>`;
+            html += `<tr><td>${idx++}</td><td>${desc}</td><td>${chargeableQty} Pax</td><td>${price.toFixed(2)}</td><td>${total.toFixed(2)}</td></tr>`;
+            if (isFoc) {
+                html += `<tr class="foc-row">
+                    <td class="foc-tree-cell">
+                        <div class="foc-tree-connector">
+                            <div class="foc-tree-branch"></div>
+                        </div>
+                    </td>
+                    <td class="foc-desc">
+                        <div class="foc-content">
+                            <span class="foc-badge">FOC</span>
+                            <span class="foc-text">(Free ${focCount} Pax)</span>
+                        </div>
+                    </td>
+                    <td>${focCount} Pax</td>
+                    <td>0.00</td>
+                    <td>0.00</td>
+                </tr>`;
+            }
         });
     }
 
@@ -242,6 +1727,106 @@ function updateInvoice() {
 document.querySelectorAll('input, textarea, select').forEach(el => {
     el.addEventListener('input', updateInvoice);
     el.addEventListener('change', updateInvoice);
+});
+
+const companyPresetEl = document.getElementById("companyPreset");
+if (companyPresetEl) {
+    companyPresetEl.addEventListener("change", function () {
+        onCompanyPresetChange(this.value);
+    });
+}
+
+const companyNameEl = document.getElementById("companyName");
+if (companyNameEl) {
+    companyNameEl.addEventListener("input", function () {
+        const val = this.value.trim().toLowerCase();
+        const presetSelect = document.getElementById("companyPreset");
+        if (presetSelect) {
+            const match = Object.keys(companyPresets).find(k => k.toLowerCase() === val);
+            presetSelect.value = match || "";
+        }
+    });
+}
+
+const customerPresetEl = document.getElementById("customerPreset");
+if (customerPresetEl) {
+    customerPresetEl.addEventListener("change", function () {
+        onCustomerPresetChange(this.value);
+    });
+}
+
+const customerNameEl = document.getElementById("customerName");
+if (customerNameEl) {
+    customerNameEl.addEventListener("input", function () {
+        const val = this.value.trim().toLowerCase();
+        const presetSelect = document.getElementById("customerPreset");
+        if (presetSelect) {
+            const match = Object.keys(customerPresets).find(k => k.toLowerCase() === val);
+            presetSelect.value = match || "";
+            if (match) {
+                const invNoEl = document.getElementById("invoiceNo");
+                if (invNoEl && (!invNoEl.value || invNoEl.value.startsWith("INV") || Object.values(customerPresets).some(p => p.prefix && invNoEl.value.startsWith(p.prefix)))) {
+                    invNoEl.value = generateInvoiceNo(match);
+                }
+            }
+        }
+        updateTripPresetUI();
+        updatePackagePresetUI();
+    });
+}
+
+const invoiceDateEl = document.getElementById("invoiceDate");
+if (invoiceDateEl) {
+    invoiceDateEl.addEventListener("change", function () {
+        const custVal = document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value;
+        const invNoEl = document.getElementById("invoiceNo");
+        if (invNoEl && invNoEl.value && custVal) {
+            const { year, month } = getCurrentYearMonth();
+            const currentVal = invNoEl.value.trim();
+            const seqMatch = currentVal.match(/-(\d+)$/);
+            const seq = seqMatch ? seqMatch[1] : "01";
+            const targetPrefix = getCompanyPrefix(custVal);
+            invNoEl.value = `${targetPrefix}${year}${month}-${seq}`;
+        }
+        updateInvoice();
+    });
+}
+
+const tripPaxEl = document.getElementById("tripPax");
+if (tripPaxEl) {
+    tripPaxEl.addEventListener("input", function () {
+        const val = parseInt(this.value);
+        if (!isNaN(val) && val > 0) {
+            const tripName = document.getElementById("tripName")?.value || "";
+            const currentCust = document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "";
+            document.querySelectorAll("#invoiceItems .item-row").forEach(row => {
+                const qtyEl = row.querySelector(".qty");
+                const descEl = row.querySelector(".desc");
+                const priceEl = row.querySelector(".price");
+
+                if (qtyEl && (qtyEl.value === "1" || qtyEl.value === "" || parseInt(qtyEl.value) <= 1)) {
+                    qtyEl.value = val;
+                }
+
+                if (descEl && priceEl && descEl.value) {
+                    const rowPax = parseInt(qtyEl?.value) || val;
+                    const dynamicPrice = calculateDynamicPackagePrice(descEl.value, tripName, rowPax, currentCust);
+                    if (dynamicPrice !== null) {
+                        priceEl.value = dynamicPrice.toFixed(2);
+                    }
+                }
+            });
+            updatePackagePresetUI();
+            updateInvoice();
+        }
+    });
+}
+
+// Close package, addon, trip & consultant dropdowns when clicking outside
+document.addEventListener("click", function (e) {
+    if (!e.target.closest(".position-relative")) {
+        document.querySelectorAll(".package-dropdown-menu, .addon-dropdown-menu, .tripname-dropdown-menu, .consultant-dropdown-menu").forEach(d => d.style.display = "none");
+    }
 });
 
 // Logo
@@ -298,8 +1883,48 @@ function removeSignature() {
     }
 }
 
+let lastConfettiTime = 0;
+const CONFETTI_COOLDOWN_MS = 3500; // 3.5s cooldown to prevent particle spam
+
+function triggerDownloadConfetti() {
+    const now = Date.now();
+    if (now - lastConfettiTime < CONFETTI_COOLDOWN_MS) {
+        return; // In cooldown
+    }
+    lastConfettiTime = now;
+
+    if (typeof confetti === "function") {
+        // Cannon from left & right
+        confetti({
+            particleCount: 60,
+            angle: 60,
+            spread: 60,
+            origin: { x: 0.05, y: 0.8 },
+            colors: ['#ff7a00', '#ffae00', '#00b4d8', '#7209b7', '#4ade80']
+        });
+        confetti({
+            particleCount: 60,
+            angle: 120,
+            spread: 60,
+            origin: { x: 0.95, y: 0.8 },
+            colors: ['#ff7a00', '#ffae00', '#00b4d8', '#7209b7', '#4ade80']
+        });
+
+        // Center burst after short delay
+        setTimeout(() => {
+            confetti({
+                particleCount: 90,
+                spread: 100,
+                origin: { y: 0.6 },
+                colors: ['#ff7a00', '#ff4500', '#ffd700', '#00c853', '#2979ff']
+            });
+        }, 220);
+    }
+}
+
 function downloadPDF() {
     updateInvoice();
+    triggerDownloadConfetti();
     const invoice = document.getElementById("invoiceToDownload");
     const invNumber = document.getElementById("invoiceNo")?.value.trim() || "invoice";
 
@@ -349,11 +1974,21 @@ function downloadPDF() {
 }
 
 // Init
+initDefaultDates();
+initCompanyDefault();
 addRow('invoiceItems');
 addSocialRow();
+updateTripPresetUI();
+updatePackagePresetUI();
 updateInvoice();
 // SAVE & LOAD INVOICE DATA
 function saveInvoice() {
+    const logoImg = document.getElementById("previewLogo");
+    const logoData = (logoImg && logoImg.style.display !== "none" && logoImg.getAttribute("src")) ? logoImg.src : "";
+
+    const sigImg = document.getElementById("previewSignature");
+    const signatureData = (sigImg && sigImg.style.display !== "none" && sigImg.getAttribute("src")) ? sigImg.src : "";
+
     let data = {
         currency: document.getElementById("currency").value,
         companyName: document.getElementById("companyName").value,
@@ -361,6 +1996,8 @@ function saveInvoice() {
         companyPhone: document.getElementById("companyPhone").value,
         companyEmail: document.getElementById("companyEmail").value,
         companyWebsite: document.getElementById("companyWebsite").value,
+        logoData: logoData,
+        signatureData: signatureData,
         invoiceNo: document.getElementById("invoiceNo").value,
         invoiceDate: document.getElementById("invoiceDate").value,
         dueDate: document.getElementById("dueDate").value,
@@ -454,6 +2091,66 @@ function loadInvoice(event) {
                 }
             });
 
+            if (data.logoData !== undefined) {
+                const logo = document.getElementById("previewLogo");
+                if (logo) {
+                    if (data.logoData) {
+                        logo.src = data.logoData;
+                        logo.style.display = "block";
+                    } else {
+                        logo.src = "";
+                        logo.style.display = "none";
+                    }
+                }
+            }
+
+            if (data.signatureData !== undefined) {
+                const sig = document.getElementById("previewSignature");
+                if (sig) {
+                    if (data.signatureData) {
+                        sig.src = data.signatureData;
+                        sig.style.display = "block";
+                    } else {
+                        sig.src = "";
+                        sig.style.display = "none";
+                    }
+                }
+            }
+
+            if (data.tripDate !== undefined) {
+                if (tripDatePicker && data.tripDate) {
+                    try {
+                        if (data.tripDate.includes(' to ')) {
+                            tripDatePicker.setDate(data.tripDate.split(' to '), false);
+                        } else {
+                            tripDatePicker.setDate(data.tripDate, false);
+                        }
+                    } catch (e) {
+                        if (document.getElementById("tripDate")) {
+                            document.getElementById("tripDate").value = data.tripDate;
+                        }
+                    }
+                } else if (document.getElementById("tripDate")) {
+                    document.getElementById("tripDate").value = data.tripDate;
+                }
+            }
+
+            if (data.companyName) {
+                const presetSelect = document.getElementById("companyPreset");
+                if (presetSelect) {
+                    const match = Object.keys(companyPresets).find(k => k.toLowerCase() === data.companyName.trim().toLowerCase());
+                    presetSelect.value = match || "";
+                }
+            }
+
+            if (data.customerName) {
+                const presetSelect = document.getElementById("customerPreset");
+                if (presetSelect) {
+                    const match = Object.keys(customerPresets).find(k => k.toLowerCase() === data.customerName.trim().toLowerCase());
+                    presetSelect.value = match || "";
+                }
+            }
+
             if (document.getElementById("showCompanyEmail")) {
                 document.getElementById("showCompanyEmail").checked = data.showCompanyEmail !== undefined ? data.showCompanyEmail : false;
             }
@@ -500,6 +2197,8 @@ function loadInvoice(event) {
                 });
             }
 
+            updateTripPresetUI();
+            updatePackagePresetUI();
             updateInvoice();
             event.target.value = "";
         } catch (err) {
