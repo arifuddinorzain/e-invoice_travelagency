@@ -377,10 +377,60 @@ body {
 
 .footer-signature-area {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
+    align-items: flex-end;
     margin: 15px 40px 20px 40px;
     page-break-inside: avoid;
     break-inside: avoid;
+}
+
+.bank-info-box {
+    background: #fdfdfd;
+    border: 1px solid #e2e8f0;
+    border-left: 3px solid #EF6C00;
+    border-radius: 6px;
+    padding: 8px 12px;
+    max-width: 320px;
+    font-size: 11px;
+    color: #475569;
+    line-height: 1.4;
+    text-align: left;
+}
+
+.bank-info-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #1e293b;
+    margin-bottom: 5px;
+    padding-bottom: 4px;
+    border-bottom: 1px dashed #e2e8f0;
+    display: flex;
+    align-items: center;
+}
+
+.bank-info-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5px;
+}
+
+.bank-row {
+    display: flex;
+    gap: 6px;
+}
+
+.bank-lbl {
+    color: #64748b;
+    font-weight: 500;
+    min-width: 68px;
+    flex-shrink: 0;
+}
+
+.bank-val {
+    color: #0f172a;
+    word-break: break-word;
 }
 
 .sig-box {

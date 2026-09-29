@@ -6,7 +6,7 @@
     <title>Invoice Generator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="assets/style.css?v=16">
+    <link rel="stylesheet" href="assets/style.css?v=17">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -477,15 +477,29 @@
                                 </div>
                             </div>
 
-                            <!-- Signature Area (Bottom Right) -->
+                            <!-- Footer Info & Signature Area (Bottom Inline) -->
                             <div class="footer-signature-area">
+                                <!-- Bank Payment Details (Bottom Left) -->
+                                <div class="bank-info-box">
+                                    <div class="bank-info-title">
+                                        <i class="fa-solid fa-building-columns me-1" style="color: #EF6C00;"></i> Bank Account Details
+                                    </div>
+                                    <div class="bank-info-grid">
+                                        <div class="bank-row"><span class="bank-lbl">No acc:</span> <span class="bank-val fw-bold">3743168</span></div>
+                                        <div class="bank-row"><span class="bank-lbl">Bank:</span> <span class="bank-val">Ngân hàng TMCP Á Châu (ACB)</span></div>
+                                        <div class="bank-row"><span class="bank-lbl">Name:</span> <span class="bank-val">SELAMATVN TOUR AND TRAVEL</span></div>
+                                        <div class="bank-row"><span class="bank-lbl">Swiftcode:</span> <span class="bank-val fw-bold">ASCBVNVX</span></div>
+                                    </div>
+                                </div>
+
+                                <!-- Signature Area (Bottom Right) -->
                                 <div class="sig-box">
                                     <div class="sig-header">Approved By</div>
                                     <div class="sig-img-container">
                                         <img id="previewSignature" src="signature.png" alt="Signature"
                                             style="display:block; max-height: 50px; max-width: 150px; margin: 4px auto; object-fit: contain;">
                                     </div>
-                                    <div class="sig-name-bottom" id="p_sigNameBottom"></div>
+                                    <div class="sig-name-bottom" id="p_sigNameBottom">N. VAN CHIEU</div>
                                 </div>
                             </div>
                         </div>
@@ -496,7 +510,7 @@
         </div>
     </div>
 
-    <script src="assets/script.js?v=47"></script>
+    <script src="assets/script.js?v=48"></script>
 </body>
 
 </html>
