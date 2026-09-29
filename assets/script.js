@@ -1704,11 +1704,27 @@ function updateInvoice() {
     document.getElementById("p_items").innerHTML = html;
 
     // 5. Totals & Payment Summary
-    let taxPct = parseFloat(document.getElementById("tax").value) || 0;
+    let taxEnabled = document.getElementById("enableTax") ? document.getElementById("enableTax").checked : false;
+    let taxPct = taxEnabled ? (parseFloat(document.getElementById("tax").value) || 0) : 0;
     let taxVal = subtotal * (taxPct / 100);
     let grand = subtotal + taxVal;
     let deposit = parseFloat(document.getElementById("depositPaid").value) || 0;
     let balance = grand - deposit;
+
+    let pTaxRow = document.getElementById("p_taxRow");
+    if (pTaxRow) {
+        pTaxRow.style.display = taxEnabled ? "flex" : "none";
+    }
+
+    let taxInput = document.getElementById("tax");
+    if (taxInput) {
+        taxInput.disabled = !taxEnabled;
+        if (!taxEnabled) {
+            taxInput.classList.add("bg-light");
+        } else {
+            taxInput.classList.remove("bg-light");
+        }
+    }
 
     document.getElementById("s_pkgTot").innerText = currency + " " + subtotal.toFixed(2);
     document.getElementById("s_dep").innerText = currency + " " + deposit.toFixed(2);
@@ -2017,6 +2033,7 @@ function saveInvoice() {
         paymentMode: document.getElementById("paymentMode").value,
         depositPaid: document.getElementById("depositPaid").value,
         tax: document.getElementById("tax").value,
+        enableTax: document.getElementById("enableTax") ? document.getElementById("enableTax").checked : false,
         approvedByName: document.getElementById("approvedByName") ? document.getElementById("approvedByName").value : "",
         showCompanyEmail: document.getElementById("showCompanyEmail") ? document.getElementById("showCompanyEmail").checked : false,
         showCompanyWebsite: document.getElementById("showCompanyWebsite") ? document.getElementById("showCompanyWebsite").checked : false,
@@ -2163,6 +2180,9 @@ function loadInvoice(event) {
             }
             if (document.getElementById("showCustomerSocial")) {
                 document.getElementById("showCustomerSocial").checked = data.showCustomerSocial !== undefined ? data.showCustomerSocial : false;
+            }
+            if (document.getElementById("enableTax")) {
+                document.getElementById("enableTax").checked = data.enableTax !== undefined ? data.enableTax : false;
             }
 
             document.getElementById("socialItems").innerHTML = "";
