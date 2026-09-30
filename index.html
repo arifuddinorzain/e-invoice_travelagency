@@ -3,6 +3,9 @@
 
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>Invoice Generator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -110,11 +113,11 @@
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="form-label small fw-bold text-secondary mb-0">Email</label>
                                 <div class="form-check form-switch mb-0">
-                                    <input class="form-check-input" type="checkbox" id="showCompanyEmail"
+                                    <input class="form-check-input" type="checkbox" id="showCompanyEmail" checked
                                         title="Toggle Email visibility in preview" onchange="updateInvoice()">
                                 </div>
                             </div>
-                            <input type="text" id="companyEmail" value="" class="form-control form-control-sm mb-2">
+                            <input type="text" id="companyEmail" value="selamattour.vn@gmail.com" class="form-control form-control-sm mb-2">
 
                             <div class="d-flex justify-content-between align-items-center mb-1">
                                 <label class="form-label small fw-bold text-secondary mb-0">Website</label>
@@ -538,7 +541,7 @@
         </div>
     </div>
 
-    <script src="assets/script.js?v=49"></script>
+    <script src="assets/script.js?v=53"></script>
 </body>
 
 </html>

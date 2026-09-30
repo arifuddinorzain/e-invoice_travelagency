@@ -5,7 +5,7 @@ const companyPresets = {
         name: "SELAMATVN TOUR AND TRAVEL",
         address: "20/6 BINH CHANH WARD, BINH CHANH DISTRICT, HO CHI MINH VIETNAM",
         phone: "+84933743168",
-        email: "",
+        email: "selamattour.vn@gmail.com",
         website: ""
     }
 };
@@ -33,6 +33,10 @@ function initCompanyDefault() {
         const presetSelect = document.getElementById("companyPreset");
         if (presetSelect) presetSelect.value = defaultKey;
         onCompanyPresetChange(defaultKey);
+    }
+    const emailToggle = document.getElementById("showCompanyEmail");
+    if (emailToggle && !emailToggle.checked) {
+        emailToggle.checked = true;
     }
     const appNameEl = document.getElementById("approvedByName");
     if (appNameEl && !appNameEl.value) {
@@ -374,15 +378,16 @@ function selectTripNameOption(itemEl, name) {
         const descEl = row.querySelector(".desc");
         const priceEl = row.querySelector(".price");
         const qtyEl = row.querySelector(".qty");
-        if (descEl && priceEl && descEl.value) {
+        if (descEl && priceEl && descEl.value && getPackageType(descEl.value) === "adult") {
             const qty = parseInt(qtyEl?.value) || 1;
-            const dynamicPrice = calculateDynamicPackagePrice(descEl.value, name, qty, currentCust);
+            const dynamicPrice = calculateDynamicAdultPrice(name, qty, currentCust);
             if (dynamicPrice !== null) {
                 priceEl.value = dynamicPrice.toFixed(2);
             }
         }
     });
 
+    syncChildPackagePrices();
     updatePackagePresetUI();
     updateInvoice();
 }
@@ -764,182 +769,234 @@ function getFocCount(customerKeyOrName, tripName, qty) {
     return 0;
 }
 
-function calculateDynamicPackagePrice(pkgName, tripName, pax, customCustomer = "") {
+function getPackageType(desc) {
+    const s = (desc || "").toLowerCase();
+    const clean = s.replace(/[^a-z0-9]/g, '');
+    if (!clean) return "other";
+
+    if (clean.includes("infant") || clean.includes("baby") || clean.includes("bayi")) {
+        return "infant";
+    }
+
+    if (clean.includes("child") || clean.includes("kanak") || clean.includes("budak")) {
+        if (clean.includes("nobed") || clean.includes("withoutbed") || clean.includes("tanpakatil") || clean.includes("tiadakatil")) {
+            return "child_nobed";
+        }
+        if (clean.includes("bed") || clean.includes("withbed") || clean.includes("withbe") || clean.includes("berkatil") || clean.includes("adakatil")) {
+            return "child_bed";
+        }
+        return "child_nobed";
+    }
+
+    if (clean.includes("adult") || clean.includes("dewasa") || clean.includes("groundpackage") || clean.includes("ground")) {
+        return "adult";
+    }
+
+    return "other";
+}
+
+function calculateDynamicAdultPrice(tripName, pax, customCustomer = "") {
     const cust = (customCustomer || (typeof document !== "undefined" ? (document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "") : "")).toUpperCase();
     const clean = s => (s || "").toLowerCase().replace(/[^a-z0-9]/g, '');
     const cleanTrip = clean(tripName);
-    const cleanPkg = clean(pkgName);
 
     let adultPrice = null;
 
     if (cust.includes("HARAREI") || cust === "HR" || cust.includes("MOOD") || cust === "MD") {
-        // HARAREI TRAVEL
-        // 1. 5H4M HCM-DALAT-MUINE
+        // HARAREI TRAVEL & MOOD TRAVEL
         if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
             adultPrice = getJomHcm5dAdultPrice(pax);
-        }
-        // 2. 4H3M HCM-DALAT-MUINE
-        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
+        } else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
             adultPrice = getJomHcm4dAdultPrice(pax);
-        }
-        // 3. 4H3M PHU QUOC
-        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
+        } else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
             adultPrice = getJomPhuQuoc4dAdultPrice(pax);
-        }
-        // 4. 5H4M PHU QUOC
-        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
+        } else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
             adultPrice = getJomPhuQuoc5dAdultPrice(pax);
-        }
-        // 5. 4H3M DANANG (Hararei specific rates)
-        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
+        } else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
             adultPrice = getHarareiDanang4dAdultPrice(pax);
-        }
-        // 6. 5H4M DANANG (Hararei specific rates)
-        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
+        } else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
             adultPrice = getHarareiDanang5dAdultPrice(pax);
-        }
-        // 7. 6H5M HANOI SAPA HALONG BAY
-        else if (cleanTrip.includes("6h5m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
+        } else if (cleanTrip.includes("6h5m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
             adultPrice = getJomHanoi6dAdultPrice(pax);
-        }
-        // 8. 5H4M HANOI SAPA HALONG BAY
-        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
+        } else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
             adultPrice = getJomHanoi5dAdultPrice(pax);
-        }
-        // Fallbacks
-        else if (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine")) {
+        } else if (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine")) {
             adultPrice = getJomHcm5dAdultPrice(pax);
-        }
-        else if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
+        } else if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
             adultPrice = getJomPhuQuoc4dAdultPrice(pax);
-        }
-        else if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
+        } else if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
             adultPrice = getHarareiDanang4dAdultPrice(pax);
-        }
-        else if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
+        } else if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
             adultPrice = getJomHanoi5dAdultPrice(pax);
         }
     } else if (cust.includes("JOM")) {
         // JOM TRAVEL
-        // 1. 5H4M HCM-DALAT-MUINE
         if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
             adultPrice = getJomHcm5dAdultPrice(pax);
-        }
-        // 2. 4H3M HCM-DALAT-MUINE
-        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
+        } else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
             adultPrice = getJomHcm4dAdultPrice(pax);
-        }
-        // 3. 4H3M PHU QUOC
-        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
+        } else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
             adultPrice = getJomPhuQuoc4dAdultPrice(pax);
-        }
-        // 4. 5H4M PHU QUOC
-        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
+        } else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
             adultPrice = getJomPhuQuoc5dAdultPrice(pax);
-        }
-        // 5. 4H3M DANANG
-        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
+        } else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
             adultPrice = getJomDanang4dAdultPrice(pax);
-        }
-        // 6. 5H4M DANANG
-        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
+        } else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
             adultPrice = getJomDanang5dAdultPrice(pax);
-        }
-        // 7. 6H5M HANOI SAPA HALONG BAY
-        else if (cleanTrip.includes("6h5m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
+        } else if (cleanTrip.includes("6h5m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
             adultPrice = getJomHanoi6dAdultPrice(pax);
-        }
-        // 8. 5H4M HANOI SAPA HALONG BAY
-        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
+        } else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
             adultPrice = getJomHanoi5dAdultPrice(pax);
-        }
-        // Fallbacks
-        else if (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine")) {
+        } else if (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine")) {
             adultPrice = getJomHcm5dAdultPrice(pax);
-        }
-        else if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
+        } else if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
             adultPrice = getJomPhuQuoc4dAdultPrice(pax);
-        }
-        else if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
+        } else if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
             adultPrice = getJomDanang4dAdultPrice(pax);
-        }
-        else if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
+        } else if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
             adultPrice = getJomHanoi5dAdultPrice(pax);
         }
     } else if (cust.includes("LANTERA") || cust === "LTR") {
-        // 1. 5H4M HCM-DALAT-MUINE
         if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
             adultPrice = getLanteraHcm5dAdultPrice(pax);
-        }
-        // 2. 4H3M HCM-DALAT-MUINE
-        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
+        } else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
             adultPrice = getLanteraHcm4dAdultPrice(pax);
-        }
-        // 3. 4H3M PHU QUOC
-        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
+        } else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
             adultPrice = getLanteraPhuQuoc4dAdultPrice(pax);
-        }
-        // 4. 5H4M PHU QUOC
-        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
+        } else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc"))) {
             adultPrice = getLanteraPhuQuoc5dAdultPrice(pax);
-        }
-        // 5. 4H3M DANANG
-        else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
+        } else if (cleanTrip.includes("4h3m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
             adultPrice = getLanteraDanang4dAdultPrice(pax);
-        }
-        // 6. 5H4M DANANG
-        else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
+        } else if (cleanTrip.includes("5h4m") && (cleanTrip.includes("danang") || cleanTrip.includes("hoian"))) {
             adultPrice = getLanteraDanang5dAdultPrice(pax);
-        }
-        // 7. 5H4M HANOI SAPA HALONG BAY
-        else if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
+        } else if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
             adultPrice = getLanteraHanoiAdultPrice(pax);
-        }
-        // Fallbacks
-        else if (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine")) {
+        } else if (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine")) {
             adultPrice = getLanteraHcm5dAdultPrice(pax);
-        }
-        else if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
+        } else if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
             adultPrice = getLanteraPhuQuoc4dAdultPrice(pax);
-        }
-        else if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
+        } else if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
             adultPrice = getLanteraDanang4dAdultPrice(pax);
         }
     } else {
         // MUSLIM TRAVELBUG & Default
         if (cleanTrip.includes("hcm") || (cleanTrip.includes("dalat") && cleanTrip.includes("muine"))) {
             adultPrice = getHcmDalatMuineAdultPrice(pax);
-        }
-        else if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
+        } else if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
             adultPrice = getDanangAdultPrice(pax);
-        }
-        else if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
+        } else if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
             adultPrice = getHanoiAdultPrice(pax);
-        }
-        else if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
+        } else if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
             adultPrice = getPhuQuocAdultPrice(pax);
         }
     }
 
-    if (adultPrice !== null) {
-        if (cleanPkg.includes("infant")) {
-            return 0.00;
-        }
-        if (cleanPkg.includes("child") && cleanPkg.includes("nobed")) {
+    return adultPrice;
+}
+
+function calculateDynamicPackagePrice(pkgName, tripName, pax, customCustomer = "", explicitAdultPrice = null) {
+    const type = getPackageType(pkgName);
+    if (type === "infant") return 0.00;
+
+    let adultPrice = (explicitAdultPrice !== null && !isNaN(explicitAdultPrice) && explicitAdultPrice > 0)
+        ? explicitAdultPrice
+        : calculateDynamicAdultPrice(tripName, pax, customCustomer);
+
+    if (adultPrice !== null && !isNaN(adultPrice)) {
+        if (type === "child_nobed") {
             return parseFloat((adultPrice * 0.50).toFixed(2));
         }
-        if (cleanPkg.includes("child") && cleanPkg.includes("bed")) {
+        if (type === "child_bed") {
             return parseFloat((adultPrice * 0.75).toFixed(2));
         }
-        if (cleanPkg.includes("adult") || cleanPkg.includes("groundpackage")) {
+        if (type === "adult") {
             return adultPrice;
         }
+        return adultPrice;
     }
     return null;
 }
 
 function calculateMuslimTravelbugPrice(pkgName, tripName, pax, custName = "") {
     return calculateDynamicPackagePrice(pkgName, tripName, pax, custName);
+}
+
+function getCurrentAdultUnitPrice() {
+    const tripName = (document.getElementById("tripName")?.value || "").trim();
+    const currentCust = (document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "").trim();
+    const defaultPax = parseInt(document.getElementById("tripPax")?.value) || 1;
+
+    // 1. Look for existing adult row in #invoiceItems
+    const rows = document.querySelectorAll("#invoiceItems .item-row");
+    for (const row of rows) {
+        const desc = row.querySelector(".desc")?.value || "";
+        if (getPackageType(desc) === "adult") {
+            const priceVal = parseFloat(row.querySelector(".price")?.value);
+            if (!isNaN(priceVal) && priceVal > 0) {
+                return priceVal;
+            }
+            const adultQty = parseInt(row.querySelector(".qty")?.value) || defaultPax;
+            const dynPrice = calculateDynamicAdultPrice(tripName, adultQty, currentCust);
+            if (dynPrice !== null) {
+                return dynPrice;
+            }
+        }
+    }
+
+    // 2. Fallback: calculate adult price using tripPax
+    const dynPrice = calculateDynamicAdultPrice(tripName, defaultPax, currentCust);
+    if (dynPrice !== null) {
+        return dynPrice;
+    }
+
+    // 3. Fallback: preset packages
+    const companyKey = Object.keys(customerPresets).find(k =>
+        (currentCust && k.toLowerCase() === currentCust.toLowerCase())
+    );
+    if (companyKey && customerPresets[companyKey]?.packages) {
+        const adultPkg = customerPresets[companyKey].packages.find(p => getPackageType(p.name) === "adult");
+        if (adultPkg && adultPkg.price) {
+            return adultPkg.price;
+        }
+    }
+
+    return 0;
+}
+
+function syncChildPackagePrices(overrideAdultPrice = null) {
+    const adultUnitPrice = (overrideAdultPrice !== null && !isNaN(overrideAdultPrice) && overrideAdultPrice > 0)
+        ? overrideAdultPrice
+        : getCurrentAdultUnitPrice();
+
+    if (!adultUnitPrice || isNaN(adultUnitPrice) || adultUnitPrice <= 0) return;
+
+    const rows = document.querySelectorAll("#invoiceItems .item-row");
+    rows.forEach(row => {
+        const desc = row.querySelector(".desc")?.value || "";
+        const priceInput = row.querySelector(".price");
+        if (!priceInput) return;
+
+        const type = getPackageType(desc);
+        if (type === "child_bed") {
+            priceInput.value = (adultUnitPrice * 0.75).toFixed(2);
+        } else if (type === "child_nobed") {
+            priceInput.value = (adultUnitPrice * 0.50).toFixed(2);
+        } else if (type === "infant") {
+            priceInput.value = "0.00";
+        }
+    });
+}
+
+function onPackagePriceInput(priceInput) {
+    const row = priceInput.closest(".item-row");
+    if (!row) return;
+    const descEl = row.querySelector(".desc");
+    if (descEl && getPackageType(descEl.value) === "adult") {
+        const newAdultPrice = parseFloat(priceInput.value);
+        if (!isNaN(newAdultPrice) && newAdultPrice > 0) {
+            syncChildPackagePrices(newAdultPrice);
+        }
+    }
 }
 
 function getAvailablePackages() {
@@ -954,7 +1011,19 @@ function getAvailablePackages() {
     if (companyKey && customerPresets[companyKey].packages && customerPresets[companyKey].packages.length > 0) {
         let pkgs = customerPresets[companyKey].packages;
         const tripName = (document.getElementById("tripName")?.value || "").trim();
-        const currentPax = parseInt(document.getElementById("tripPax")?.value) || 15;
+        const currentAdultPrice = getCurrentAdultUnitPrice();
+        const defaultPax = parseInt(document.getElementById("tripPax")?.value) || 15;
+
+        const getPkgDisplayPrice = (pkg) => {
+            const type = getPackageType(pkg.name);
+            if (type === "infant") return 0.00;
+            if (type === "child_nobed" && currentAdultPrice > 0) return parseFloat((currentAdultPrice * 0.50).toFixed(2));
+            if (type === "child_bed" && currentAdultPrice > 0) return parseFloat((currentAdultPrice * 0.75).toFixed(2));
+            if (type === "adult" && currentAdultPrice > 0) return currentAdultPrice;
+
+            const dynamicPrice = calculateDynamicPackagePrice(pkg.name, pkg.trip || tripName, defaultPax, companyKey, currentAdultPrice);
+            return dynamicPrice !== null ? dynamicPrice : pkg.price;
+        };
 
         if (tripName) {
             const clean = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -979,25 +1048,19 @@ function getAvailablePackages() {
                 }
 
                 if (matched.length > 0) {
-                    const dynamicPkgs = matched.map(p => {
-                        const dynamicPrice = calculateDynamicPackagePrice(p.name, p.trip || tripName, currentPax, companyKey);
-                        return {
-                            ...p,
-                            price: dynamicPrice !== null ? dynamicPrice : p.price
-                        };
-                    });
+                    const dynamicPkgs = matched.map(p => ({
+                        ...p,
+                        price: getPkgDisplayPrice(p)
+                    }));
                     return { company: companyKey, packages: dynamicPkgs, selectedTrip: tripName };
                 }
             }
         }
 
-        const dynamicPkgs = pkgs.map(p => {
-            const dynamicPrice = calculateDynamicPackagePrice(p.name, p.trip || tripName, currentPax, companyKey);
-            return {
-                ...p,
-                price: dynamicPrice !== null ? dynamicPrice : p.price
-            };
-        });
+        const dynamicPkgs = pkgs.map(p => ({
+            ...p,
+            price: getPkgDisplayPrice(p)
+        }));
 
         return { company: companyKey, packages: dynamicPkgs, selectedTrip: tripName };
     }
@@ -1059,7 +1122,7 @@ function renderPackageDropdownItems(inputEl, dropdown, filterText = "") {
         return `
         <div class="package-opt-item d-flex justify-content-between align-items-center p-2 border-bottom text-dark"
             style="cursor: pointer;"
-            onmousedown="selectPackageOption(this, '${pkg.name.replace(/'/g, "\\'")}', ${pkg.price}, '${(pkg.trip || '').replace(/'/g, "\\'")}')">
+            onmousedown="selectPackageOption(this, '${pkg.name.replace(/'/g, "\'")}', ${pkg.price}, '${(pkg.trip || '').replace(/'/g, "\'")}')">
             <div class="pe-2 text-start" style="font-size: 11px; font-weight: 600; line-height: 1.35; word-break: break-word;">
                 ${pkg.name} ${tripBadge}
             </div>
@@ -1081,9 +1144,7 @@ function selectPackageOption(itemEl, name, price, trip = "") {
 
     const qtyInput = row.querySelector(".qty");
     const defaultPax = parseInt(document.getElementById("tripPax")?.value) || 1;
-    if (qtyInput && (qtyInput.value === "1" || qtyInput.value === "") && defaultPax > 1) {
-        qtyInput.value = defaultPax;
-    }
+    const priceInput = row.querySelector(".price");
 
     const tripNameEl = document.getElementById("tripName");
     if (tripNameEl && !tripNameEl.value && trip) {
@@ -1092,12 +1153,46 @@ function selectPackageOption(itemEl, name, price, trip = "") {
 
     const currentCust = document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "";
     const currentTrip = tripNameEl?.value || trip;
-    const currentPax = parseInt(qtyInput?.value) || defaultPax;
-    const dynamicPrice = calculateDynamicPackagePrice(name, currentTrip, currentPax, currentCust);
 
-    const priceInput = row.querySelector(".price");
-    if (priceInput) {
-        priceInput.value = dynamicPrice !== null ? dynamicPrice.toFixed(2) : parseFloat(price).toFixed(2);
+    const type = getPackageType(name);
+    if (type === "adult") {
+        if (qtyInput && (qtyInput.value === "1" || qtyInput.value === "") && defaultPax > 1) {
+            qtyInput.value = defaultPax;
+        }
+        const currentPax = parseInt(qtyInput?.value) || defaultPax;
+        const dynamicPrice = calculateDynamicAdultPrice(currentTrip, currentPax, currentCust);
+        if (priceInput) {
+            priceInput.value = dynamicPrice !== null ? dynamicPrice.toFixed(2) : parseFloat(price).toFixed(2);
+        }
+        const adultPrice = parseFloat(priceInput?.value) || dynamicPrice || 0;
+        syncChildPackagePrices(adultPrice);
+    } else if (type === "child_bed") {
+        if (qtyInput && (qtyInput.value === "" || parseInt(qtyInput.value) <= 0)) {
+            qtyInput.value = 1;
+        }
+        const adultPrice = getCurrentAdultUnitPrice();
+        if (priceInput) {
+            priceInput.value = (adultPrice > 0) ? (adultPrice * 0.75).toFixed(2) : (parseFloat(price) || 0).toFixed(2);
+        }
+    } else if (type === "child_nobed") {
+        if (qtyInput && (qtyInput.value === "" || parseInt(qtyInput.value) <= 0)) {
+            qtyInput.value = 1;
+        }
+        const adultPrice = getCurrentAdultUnitPrice();
+        if (priceInput) {
+            priceInput.value = (adultPrice > 0) ? (adultPrice * 0.50).toFixed(2) : (parseFloat(price) || 0).toFixed(2);
+        }
+    } else if (type === "infant") {
+        if (qtyInput && (qtyInput.value === "" || parseInt(qtyInput.value) <= 0)) {
+            qtyInput.value = 1;
+        }
+        if (priceInput) {
+            priceInput.value = "0.00";
+        }
+    } else {
+        if (priceInput) {
+            priceInput.value = parseFloat(price || 0).toFixed(2);
+        }
     }
 
     const dropdown = container.querySelector(".package-dropdown-menu");
@@ -1117,22 +1212,35 @@ function onPackageDescInput(inputEl) {
 
     const val = inputEl.value.trim().toLowerCase();
     const row = inputEl.closest(".item-row");
-    if (row && val && packages) {
-        const matched = packages.find(p => p.name.toLowerCase() === val || (p.trip && (p.name + " " + p.trip).toLowerCase() === val));
-        if (matched) {
-            const currentCust = document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "";
-            const tripName = document.getElementById("tripName")?.value || (matched.trip || "");
-            const qtyInput = row.querySelector(".qty");
-            const defaultPax = parseInt(document.getElementById("tripPax")?.value) || 1;
-            if (qtyInput && (qtyInput.value === "1" || qtyInput.value === "") && defaultPax > 1) {
-                qtyInput.value = defaultPax;
-            }
-            const currentPax = parseInt(qtyInput?.value) || defaultPax;
-            const dynamicPrice = calculateDynamicPackagePrice(matched.name, tripName, currentPax, currentCust);
+    if (row && val) {
+        const type = getPackageType(val);
+        const priceInput = row.querySelector(".price");
+        const qtyInput = row.querySelector(".qty");
+        const defaultPax = parseInt(document.getElementById("tripPax")?.value) || 1;
+        const currentCust = document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "";
+        const tripName = document.getElementById("tripName")?.value || "";
 
-            const priceInput = row.querySelector(".price");
+        if (type === "adult") {
+            const currentPax = parseInt(qtyInput?.value) || defaultPax;
+            const dynamicPrice = calculateDynamicAdultPrice(tripName, currentPax, currentCust);
+            if (priceInput && dynamicPrice !== null) {
+                priceInput.value = dynamicPrice.toFixed(2);
+            }
+            const adultPrice = parseFloat(priceInput?.value) || dynamicPrice || 0;
+            syncChildPackagePrices(adultPrice);
+        } else if (type === "child_bed") {
+            const adultPrice = getCurrentAdultUnitPrice();
+            if (priceInput && adultPrice > 0) {
+                priceInput.value = (adultPrice * 0.75).toFixed(2);
+            }
+        } else if (type === "child_nobed") {
+            const adultPrice = getCurrentAdultUnitPrice();
+            if (priceInput && adultPrice > 0) {
+                priceInput.value = (adultPrice * 0.50).toFixed(2);
+            }
+        } else if (type === "infant") {
             if (priceInput) {
-                priceInput.value = dynamicPrice !== null ? dynamicPrice.toFixed(2) : parseFloat(matched.price).toFixed(2);
+                priceInput.value = "0.00";
             }
         }
     }
@@ -1149,9 +1257,21 @@ function onPackageQtyChange(qtyInput) {
     const qty = parseInt(qtyInput.value) || 1;
 
     if (descEl && priceEl && descEl.value) {
-        const dynamicPrice = calculateDynamicPackagePrice(descEl.value, tripName, qty, currentCust);
-        if (dynamicPrice !== null) {
-            priceEl.value = dynamicPrice.toFixed(2);
+        const type = getPackageType(descEl.value);
+        if (type === "adult") {
+            const dynamicPrice = calculateDynamicAdultPrice(tripName, qty, currentCust);
+            if (dynamicPrice !== null) {
+                priceEl.value = dynamicPrice.toFixed(2);
+            }
+            const newAdultPrice = parseFloat(priceEl.value) || dynamicPrice || 0;
+            syncChildPackagePrices(newAdultPrice);
+        } else if (type === "child_bed" || type === "child_nobed" || type === "infant") {
+            const adultPrice = getCurrentAdultUnitPrice();
+            if (adultPrice > 0) {
+                if (type === "child_bed") priceEl.value = (adultPrice * 0.75).toFixed(2);
+                else if (type === "child_nobed") priceEl.value = (adultPrice * 0.50).toFixed(2);
+                else if (type === "infant") priceEl.value = "0.00";
+            }
         }
     }
 }
@@ -1343,14 +1463,15 @@ function onCustomerPresetChange(val) {
             const descEl = row.querySelector(".desc");
             const priceEl = row.querySelector(".price");
             const qtyEl = row.querySelector(".qty");
-            if (descEl && priceEl && descEl.value) {
+            if (descEl && priceEl && descEl.value && getPackageType(descEl.value) === "adult") {
                 const qty = parseInt(qtyEl?.value) || 1;
-                const dynamicPrice = calculateDynamicPackagePrice(descEl.value, tripName, qty, val);
+                const dynamicPrice = calculateDynamicAdultPrice(tripName, qty, val);
                 if (dynamicPrice !== null) {
                     priceEl.value = dynamicPrice.toFixed(2);
                 }
             }
         });
+        syncChildPackagePrices();
     }
     updateTripPresetUI();
     updatePackagePresetUI();
@@ -1410,7 +1531,7 @@ function addRow(tableId, defaultDesc = "", defaultPrice = 0, defaultQty = null) 
             <div class="row g-2 align-items-end">
                 <div class="col">
                     <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Unit Price</label>
-                    <input type="number" class="price form-control form-control-sm" value="${initialPrice}" min="0" step="0.01" oninput="updateInvoice()">
+                    <input type="number" class="price form-control form-control-sm" value="${initialPrice}" min="0" step="0.01" oninput="${isPackage ? 'onPackagePriceInput(this); ' : ''}updateInvoice()">
                 </div>
                 <div class="col-4">
                     <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Qty</label>
@@ -1547,6 +1668,7 @@ function formatDate(dateString) {
 }
 
 function updateInvoice() {
+    syncChildPackagePrices();
     let currency = document.getElementById("currency").value;
     document.querySelectorAll(".p_currency_lbl").forEach(el => el.innerText = currency);
 
@@ -1653,7 +1775,7 @@ function updateInvoice() {
             let price = parseFloat(row.querySelector(".price").value) || 0;
             let qty = parseInt(row.querySelector(".qty").value) || 0;
 
-            let focCount = getFocCount(currentCust, currentTrip, qty);
+            let focCount = (getPackageType(desc) === "adult") ? getFocCount(currentCust, currentTrip, qty) : 0;
             let isFoc = focCount > 0 && price > 0;
             let chargeableQty = isFoc ? Math.max(0, qty - focCount) : qty;
             let total = price * chargeableQty;
@@ -1824,18 +1946,19 @@ if (tripPaxEl) {
                 const descEl = row.querySelector(".desc");
                 const priceEl = row.querySelector(".price");
 
-                if (qtyEl && (qtyEl.value === "1" || qtyEl.value === "" || parseInt(qtyEl.value) <= 1)) {
-                    qtyEl.value = val;
-                }
-
-                if (descEl && priceEl && descEl.value) {
-                    const rowPax = parseInt(qtyEl?.value) || val;
-                    const dynamicPrice = calculateDynamicPackagePrice(descEl.value, tripName, rowPax, currentCust);
-                    if (dynamicPrice !== null) {
-                        priceEl.value = dynamicPrice.toFixed(2);
+                if (descEl && getPackageType(descEl.value) === "adult") {
+                    if (qtyEl) {
+                        qtyEl.value = val;
+                    }
+                    if (priceEl) {
+                        const dynamicPrice = calculateDynamicAdultPrice(tripName, val, currentCust);
+                        if (dynamicPrice !== null) {
+                            priceEl.value = dynamicPrice.toFixed(2);
+                        }
                     }
                 }
             });
+            syncChildPackagePrices();
             updatePackagePresetUI();
             updateInvoice();
         }
