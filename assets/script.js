@@ -16,6 +16,19 @@ const defaultCurrencyRates = {
 
 let currentAppliedRate = 1.0;
 
+function getConvertedPrice(baseMyrPrice) {
+    if (baseMyrPrice === null || baseMyrPrice === undefined || isNaN(baseMyrPrice)) return null;
+    const rate = currentAppliedRate || 1.0;
+    return (rate !== 1.0) ? (baseMyrPrice * rate) : baseMyrPrice;
+}
+
+function formatPriceForInput(price) {
+    if (price === null || price === undefined || isNaN(price)) return "0.00";
+    const cur = document.getElementById("currency")?.value || "RM";
+    const curInfo = defaultCurrencyRates[cur] || { noDecimals: false };
+    return curInfo.noDecimals ? String(Math.round(price)) : Number(price).toFixed(2);
+}
+
 function convertAllPrices(ratio, isNoDecimal) {
     if (!ratio || ratio === 1 || isNaN(ratio)) return;
 
@@ -488,7 +501,8 @@ function selectTripNameOption(itemEl, name) {
             const qty = parseInt(qtyEl?.value) || 1;
             const dynamicPrice = calculateDynamicAdultPrice(name, qty, currentCust);
             if (dynamicPrice !== null) {
-                priceEl.value = dynamicPrice.toFixed(2);
+                const converted = getConvertedPrice(dynamicPrice);
+                priceEl.value = formatPriceForInput(converted);
             }
         }
     });
@@ -1044,7 +1058,7 @@ function getCurrentAdultUnitPrice() {
             const adultQty = parseInt(row.querySelector(".qty")?.value) || defaultPax;
             const dynPrice = calculateDynamicAdultPrice(tripName, adultQty, currentCust);
             if (dynPrice !== null) {
-                return dynPrice;
+                return getConvertedPrice(dynPrice);
             }
         }
     }
@@ -1052,7 +1066,7 @@ function getCurrentAdultUnitPrice() {
     // 2. Fallback: calculate adult price using tripPax
     const dynPrice = calculateDynamicAdultPrice(tripName, defaultPax, currentCust);
     if (dynPrice !== null) {
-        return dynPrice;
+        return getConvertedPrice(dynPrice);
     }
 
     // 3. Fallback: preset packages
@@ -1062,7 +1076,7 @@ function getCurrentAdultUnitPrice() {
     if (companyKey && customerPresets[companyKey]?.packages) {
         const adultPkg = customerPresets[companyKey].packages.find(p => getPackageType(p.name) === "adult");
         if (adultPkg && adultPkg.price) {
-            return adultPkg.price;
+            return getConvertedPrice(adultPkg.price);
         }
     }
 
@@ -1084,11 +1098,11 @@ function syncChildPackagePrices(overrideAdultPrice = null) {
 
         const type = getPackageType(desc);
         if (type === "child_bed") {
-            priceInput.value = (adultUnitPrice * 0.75).toFixed(2);
+            priceInput.value = formatPriceForInput(adultUnitPrice * 0.75);
         } else if (type === "child_nobed") {
-            priceInput.value = (adultUnitPrice * 0.50).toFixed(2);
+            priceInput.value = formatPriceForInput(adultUnitPrice * 0.50);
         } else if (type === "infant") {
-            priceInput.value = "0.00";
+            priceInput.value = formatPriceForInput(0);
         }
     });
 }
@@ -1341,23 +1355,24 @@ function onPackageDescInput(inputEl) {
             const currentPax = parseInt(qtyInput?.value) || defaultPax;
             const dynamicPrice = calculateDynamicAdultPrice(tripName, currentPax, currentCust);
             if (priceInput && dynamicPrice !== null) {
-                priceInput.value = dynamicPrice.toFixed(2);
+                const converted = getConvertedPrice(dynamicPrice);
+                priceInput.value = formatPriceForInput(converted);
             }
-            const adultPrice = parseFloat(priceInput?.value) || dynamicPrice || 0;
+            const adultPrice = parseFloat(priceInput?.value) || 0;
             syncChildPackagePrices(adultPrice);
         } else if (type === "child_bed") {
             const adultPrice = getCurrentAdultUnitPrice();
             if (priceInput && adultPrice > 0) {
-                priceInput.value = (adultPrice * 0.75).toFixed(2);
+                priceInput.value = formatPriceForInput(adultPrice * 0.75);
             }
         } else if (type === "child_nobed") {
             const adultPrice = getCurrentAdultUnitPrice();
             if (priceInput && adultPrice > 0) {
-                priceInput.value = (adultPrice * 0.50).toFixed(2);
+                priceInput.value = formatPriceForInput(adultPrice * 0.50);
             }
         } else if (type === "infant") {
             if (priceInput) {
-                priceInput.value = "0.00";
+                priceInput.value = formatPriceForInput(0);
             }
         }
     }
@@ -1378,16 +1393,17 @@ function onPackageQtyChange(qtyInput) {
         if (type === "adult") {
             const dynamicPrice = calculateDynamicAdultPrice(tripName, qty, currentCust);
             if (dynamicPrice !== null) {
-                priceEl.value = dynamicPrice.toFixed(2);
+                const converted = getConvertedPrice(dynamicPrice);
+                priceEl.value = formatPriceForInput(converted);
             }
-            const newAdultPrice = parseFloat(priceEl.value) || dynamicPrice || 0;
+            const newAdultPrice = parseFloat(priceEl.value) || 0;
             syncChildPackagePrices(newAdultPrice);
         } else if (type === "child_bed" || type === "child_nobed" || type === "infant") {
             const adultPrice = getCurrentAdultUnitPrice();
             if (adultPrice > 0) {
-                if (type === "child_bed") priceEl.value = (adultPrice * 0.75).toFixed(2);
-                else if (type === "child_nobed") priceEl.value = (adultPrice * 0.50).toFixed(2);
-                else if (type === "infant") priceEl.value = "0.00";
+                if (type === "child_bed") priceEl.value = formatPriceForInput(adultPrice * 0.75);
+                else if (type === "child_nobed") priceEl.value = formatPriceForInput(adultPrice * 0.50);
+                else if (type === "infant") priceEl.value = formatPriceForInput(0);
             }
         }
     }
@@ -1415,7 +1431,13 @@ function renderAddonDropdownItems(inputEl, dropdown, filterText = "") {
         return;
     }
 
-    dropdown.innerHTML = filtered.map(item => `
+    const cur = document.getElementById("currency")?.value || "RM";
+    const curInfo = defaultCurrencyRates[cur] || { noDecimals: false };
+
+    dropdown.innerHTML = filtered.map(item => {
+        const converted = getConvertedPrice(item.price);
+        const displayPrice = formatPriceForInput(converted);
+        return `
         <div class="addon-opt-item d-flex justify-content-between align-items-center p-2 border-bottom text-dark"
             style="cursor: pointer;"
             onmousedown="selectAddonOption(this, '${item.name.replace(/'/g, "\\'")}', ${item.price})">
@@ -1423,10 +1445,11 @@ function renderAddonDropdownItems(inputEl, dropdown, filterText = "") {
                 <i class="fa-solid fa-ticket text-orange-500 me-1"></i> ${item.name}
             </div>
             <span class="badge bg-warning text-dark flex-shrink-0" style="font-size: 10px;">
-                RM ${item.price.toFixed(2)}
+                ${cur} ${displayPrice}
             </span>
         </div>
-    `).join("");
+        `;
+    }).join("");
 }
 
 function selectAddonOption(itemEl, name, price) {
@@ -1438,7 +1461,10 @@ function selectAddonOption(itemEl, name, price) {
     if (inputEl) inputEl.value = name;
 
     const priceInput = row.querySelector(".price");
-    if (priceInput) priceInput.value = parseFloat(price).toFixed(2);
+    if (priceInput) {
+        const converted = getConvertedPrice(parseFloat(price));
+        priceInput.value = formatPriceForInput(converted);
+    }
 
     const qtyInput = row.querySelector(".qty");
     const defaultPax = parseInt(document.getElementById("tripPax")?.value) || 1;
@@ -1465,7 +1491,10 @@ function onAddonDescInput(inputEl) {
         const matched = addonPresets.find(p => p.name.toLowerCase() === val);
         if (matched) {
             const priceInput = row.querySelector(".price");
-            if (priceInput) priceInput.value = parseFloat(matched.price).toFixed(2);
+            if (priceInput) {
+                const converted = getConvertedPrice(parseFloat(matched.price));
+                priceInput.value = formatPriceForInput(converted);
+            }
             const qtyInput = row.querySelector(".qty");
             const defaultPax = parseInt(document.getElementById("tripPax")?.value) || 1;
             if (qtyInput && (qtyInput.value === "1" || qtyInput.value === "") && defaultPax > 1) {
@@ -1584,7 +1613,8 @@ function onCustomerPresetChange(val) {
                 const qty = parseInt(qtyEl?.value) || 1;
                 const dynamicPrice = calculateDynamicAdultPrice(tripName, qty, val);
                 if (dynamicPrice !== null) {
-                    priceEl.value = dynamicPrice.toFixed(2);
+                    const converted = getConvertedPrice(dynamicPrice);
+                    priceEl.value = formatPriceForInput(converted);
                 }
             }
         });
@@ -1599,7 +1629,8 @@ function addRow(tableId, defaultDesc = "", defaultPrice = 0, defaultQty = null) 
     const isPackage = tableId === 'invoiceItems';
     const tripPaxVal = parseInt(document.getElementById("tripPax")?.value) || 1;
     const initialQty = defaultQty !== null ? defaultQty : (isPackage ? tripPaxVal : 1);
-    const initialPrice = defaultPrice ? parseFloat(defaultPrice).toFixed(2) : "0.00";
+    const initialPriceVal = defaultPrice ? (getConvertedPrice(parseFloat(defaultPrice)) || 0) : 0;
+    const initialPrice = formatPriceForInput(initialPriceVal);
 
     let descInputHtml = "";
     if (isPackage) {
@@ -2080,7 +2111,8 @@ if (tripPaxEl) {
                     if (priceEl) {
                         const dynamicPrice = calculateDynamicAdultPrice(tripName, val, currentCust);
                         if (dynamicPrice !== null) {
-                            priceEl.value = dynamicPrice.toFixed(2);
+                            const converted = getConvertedPrice(dynamicPrice);
+                            priceEl.value = formatPriceForInput(converted);
                         }
                     }
                 }
