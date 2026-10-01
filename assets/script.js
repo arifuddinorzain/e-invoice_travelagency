@@ -1,11 +1,112 @@
 let rowCount = 1;
 
+const defaultCurrencyRates = {
+    "RM": { rate: 1, code: "MYR", symbol: "RM", name: "Malaysian Ringgit", noDecimals: false },
+    "$": { rate: 0.23, code: "USD", symbol: "$", name: "US Dollar", noDecimals: false },
+    "€": { rate: 0.21, code: "EUR", symbol: "€", name: "Euro", noDecimals: false },
+    "£": { rate: 0.18, code: "GBP", symbol: "£", name: "British Pound", noDecimals: false },
+    "S$": { rate: 0.31, code: "SGD", symbol: "S$", name: "Singapore Dollar", noDecimals: false },
+    "A$": { rate: 0.35, code: "AUD", symbol: "A$", name: "Australian Dollar", noDecimals: false },
+    "¥": { rate: 36.5, code: "JPY", symbol: "¥", name: "JPY / CNY", noDecimals: true },
+    "Rp": { rate: 3750, code: "IDR", symbol: "Rp", name: "Indonesian Rupiah", noDecimals: true },
+    "₹": { rate: 20, code: "INR", symbol: "₹", name: "Indian Rupee", noDecimals: false },
+    "฿": { rate: 7.85, code: "THB", symbol: "฿", name: "Thai Baht", noDecimals: false },
+    "₫": { rate: 6350, code: "VND", symbol: "₫", name: "Vietnamese Dong", noDecimals: true }
+};
+
+let currentAppliedRate = 1.0;
+
+function convertAllPrices(ratio, isNoDecimal) {
+    if (!ratio || ratio === 1 || isNaN(ratio)) return;
+
+    // Convert item rows
+    document.querySelectorAll("#invoiceItems .item-row, #addonItems .item-row").forEach(row => {
+        const priceEl = row.querySelector(".price");
+        if (priceEl && priceEl.value !== "") {
+            const oldVal = parseFloat(priceEl.value);
+            if (!isNaN(oldVal)) {
+                const newVal = isNoDecimal ? Math.round(oldVal * ratio) : parseFloat((oldVal * ratio).toFixed(2));
+                priceEl.value = newVal;
+            }
+        }
+    });
+
+    // Convert deposit
+    const depEl = document.getElementById("depositPaid");
+    if (depEl && depEl.value !== "") {
+        const oldDep = parseFloat(depEl.value);
+        if (!isNaN(oldDep)) {
+            const newDep = isNoDecimal ? Math.round(oldDep * ratio) : parseFloat((oldDep * ratio).toFixed(2));
+            depEl.value = newDep;
+        }
+    }
+}
+
+function onCurrencyChange(newCurrency) {
+    const curInfo = defaultCurrencyRates[newCurrency] || { rate: 1, code: newCurrency, symbol: newCurrency, noDecimals: false };
+    const rateBox = document.getElementById("exchangeRateBox");
+    const rateInput = document.getElementById("customExchangeRate");
+    const rateTargetCode = document.getElementById("rateTargetCode");
+    const rateTargetSymbol = document.getElementById("rateTargetSymbol");
+    const rateInfoText = document.getElementById("rateInfoText");
+
+    let targetRate = curInfo.rate;
+
+    if (newCurrency === "RM") {
+        if (rateBox) rateBox.style.display = "none";
+        targetRate = 1.0;
+    } else {
+        if (rateBox) rateBox.style.display = "block";
+        if (rateTargetCode) rateTargetCode.innerText = curInfo.code;
+        if (rateTargetSymbol) rateTargetSymbol.innerText = curInfo.symbol;
+        if (rateInput) rateInput.value = targetRate;
+        if (rateInfoText) rateInfoText.innerText = `Default fixed rate: 1 MYR = ${curInfo.rate.toLocaleString('en-US')} ${curInfo.symbol}`;
+    }
+
+    const prevRate = currentAppliedRate || 1.0;
+    const ratio = targetRate / prevRate;
+    convertAllPrices(ratio, curInfo.noDecimals);
+    currentAppliedRate = targetRate;
+
+    updateTripPresetUI();
+    updatePackagePresetUI();
+    updateInvoice();
+}
+
+function onCustomRateInput(val) {
+    const newRate = parseFloat(val);
+    if (isNaN(newRate) || newRate <= 0) return;
+
+    const cur = document.getElementById("currency")?.value || "RM";
+    const curInfo = defaultCurrencyRates[cur] || { noDecimals: false };
+
+    const prevRate = currentAppliedRate || 1.0;
+    const ratio = newRate / prevRate;
+    convertAllPrices(ratio, curInfo.noDecimals);
+    currentAppliedRate = newRate;
+
+    updateTripPresetUI();
+    updatePackagePresetUI();
+    updateInvoice();
+}
+
+function resetDefaultExchangeRate() {
+    const cur = document.getElementById("currency")?.value || "RM";
+    const curInfo = defaultCurrencyRates[cur] || { rate: 1, noDecimals: false };
+    const rateInput = document.getElementById("customExchangeRate");
+    if (rateInput) {
+        rateInput.value = curInfo.rate;
+    }
+    onCustomRateInput(curInfo.rate);
+}
+
 const companyPresets = {
     "SELAMATVN TOUR AND TRAVEL": {
         name: "SELAMATVN TOUR AND TRAVEL",
         address: "20/6 BINH CHANH WARD, BINH CHANH DISTRICT, HO CHI MINH VIETNAM",
         phone: "+84933743168",
         email: "selamattour.vn@gmail.com",
+        license: "79-2734/2026/CDLQGVN-GP PLHQT",
         website: ""
     }
 };
@@ -18,6 +119,9 @@ function onCompanyPresetChange(val) {
         document.getElementById("companyPhone").value = preset.phone || "";
         if (preset.email !== undefined) {
             document.getElementById("companyEmail").value = preset.email;
+        }
+        if (preset.license !== undefined) {
+            document.getElementById("companyLicense").value = preset.license;
         }
         if (preset.website !== undefined) {
             document.getElementById("companyWebsite").value = preset.website;
@@ -38,6 +142,14 @@ function initCompanyDefault() {
     if (emailToggle && !emailToggle.checked) {
         emailToggle.checked = true;
     }
+    const licenseToggle = document.getElementById("showCompanyLicense");
+    if (licenseToggle && !licenseToggle.checked) {
+        licenseToggle.checked = true;
+    }
+    const licenseInput = document.getElementById("companyLicense");
+    if (licenseInput && !licenseInput.value) {
+        licenseInput.value = "79-2734/2026/CDLQGVN-GP PLHQT";
+    }
     const appNameEl = document.getElementById("approvedByName");
     if (appNameEl && !appNameEl.value) {
         appNameEl.value = "N. VAN CHIEU";
@@ -46,19 +158,13 @@ function initCompanyDefault() {
 
 const customerPresets = {
     "FAIRYS HOLIDAY": {
-        name: "FAIRYS HOLIDAY",
-        prefix: "FRY",
-        address: "24-2, Jalan Tanjung SD 13/1, Bandar Sri Damansara, 52200 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia",
-        packages: []
-    },
-    "FAIRYS TRAVEL": {
-        name: "FAIRYS TRAVEL",
+        name: "FAIRYS HOLIDAY SDN BHD",
         prefix: "FRY",
         address: "24-2, Jalan Tanjung SD 13/1, Bandar Sri Damansara, 52200 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia",
         packages: []
     },
     "HARAREI TRAVEL": {
-        name: "HARAREI TRAVEL",
+        name: "HARAREI TRAVEL AND TOURS SDN BHD",
         prefix: "HR",
         address: "B-1-22, Savanna Lifestyle Retails, Jalan BBLS 2, Bandar Baru Lembah Selatan, 43800 Dengkil, Selangor, Malaysia",
         trips: [
@@ -114,7 +220,7 @@ const customerPresets = {
         ]
     },
     "JOM TRAVEL": {
-        name: "JOM TRAVEL",
+        name: "JOM TRAVEL AND TOURS SDN BHD",
         prefix: "JOM",
         address: "1st Floor, Sublot 26, Lot 4220, Block 233, KNLD, Lee Ling Heights, 6 1/2 Mile, Jalan Penrissen, 6th Mile, 93250 Kuching, Sarawak, Malaysia",
         trips: [
@@ -170,7 +276,7 @@ const customerPresets = {
         ]
     },
     "LANTERA TRAVEL": {
-        name: "LANTERA TRAVEL",
+        name: "LANTERA TRAVEL SDN BHD",
         prefix: "LTR",
         address: "Lot A-2-7A, Blok A, Ostia Bangi, Seksyen 14, 46350 Bangi, Selangor, Malaysia",
         trips: [
@@ -276,7 +382,7 @@ const customerPresets = {
         ]
     },
     "MUSLIM TRAVELBUG": {
-        name: "MUSLIM TRAVELBUG",
+        name: "MUSLIMTRAVELBUG SDN BHD",
         prefix: "MTB",
         address: "C-21, Zeva Boulevard, Seri Kembangan, Selangor 43300, Malaysia",
         trips: [
@@ -1022,7 +1128,9 @@ function getAvailablePackages() {
             if (type === "adult" && currentAdultPrice > 0) return currentAdultPrice;
 
             const dynamicPrice = calculateDynamicPackagePrice(pkg.name, pkg.trip || tripName, defaultPax, companyKey, currentAdultPrice);
-            return dynamicPrice !== null ? dynamicPrice : pkg.price;
+            const basePrice = dynamicPrice !== null ? dynamicPrice : pkg.price;
+            const rate = currentAppliedRate || 1.0;
+            return (rate !== 1.0) ? (basePrice * rate) : basePrice;
         };
 
         if (tripName) {
@@ -1034,7 +1142,7 @@ function getAvailablePackages() {
                     const cleanTripProp = p.trip ? clean(p.trip) : "";
                     const cleanPkgName = clean(p.name);
                     return (cleanTripProp && (cleanTripProp.includes(cleanTrip) || cleanTrip.includes(cleanTripProp))) ||
-                           cleanPkgName.includes(cleanTrip);
+                        cleanPkgName.includes(cleanTrip);
                 });
 
                 if (matched.length === 0) {
@@ -1154,6 +1262,10 @@ function selectPackageOption(itemEl, name, price, trip = "") {
     const currentCust = document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "";
     const currentTrip = tripNameEl?.value || trip;
 
+    const cur = document.getElementById("currency")?.value || "RM";
+    const curInfo = defaultCurrencyRates[cur] || { noDecimals: false };
+    const rate = currentAppliedRate || 1.0;
+
     const type = getPackageType(name);
     if (type === "adult") {
         if (qtyInput && (qtyInput.value === "1" || qtyInput.value === "") && defaultPax > 1) {
@@ -1161,10 +1273,12 @@ function selectPackageOption(itemEl, name, price, trip = "") {
         }
         const currentPax = parseInt(qtyInput?.value) || defaultPax;
         const dynamicPrice = calculateDynamicAdultPrice(currentTrip, currentPax, currentCust);
+        const basePrice = dynamicPrice !== null ? dynamicPrice : parseFloat(price);
+        const finalPrice = (rate !== 1.0 && dynamicPrice !== null) ? (basePrice * rate) : basePrice;
         if (priceInput) {
-            priceInput.value = dynamicPrice !== null ? dynamicPrice.toFixed(2) : parseFloat(price).toFixed(2);
+            priceInput.value = curInfo.noDecimals ? Math.round(finalPrice) : finalPrice.toFixed(2);
         }
-        const adultPrice = parseFloat(priceInput?.value) || dynamicPrice || 0;
+        const adultPrice = parseFloat(priceInput?.value) || finalPrice || 0;
         syncChildPackagePrices(adultPrice);
     } else if (type === "child_bed") {
         if (qtyInput && (qtyInput.value === "" || parseInt(qtyInput.value) <= 0)) {
@@ -1172,7 +1286,8 @@ function selectPackageOption(itemEl, name, price, trip = "") {
         }
         const adultPrice = getCurrentAdultUnitPrice();
         if (priceInput) {
-            priceInput.value = (adultPrice > 0) ? (adultPrice * 0.75).toFixed(2) : (parseFloat(price) || 0).toFixed(2);
+            const val = (adultPrice > 0) ? (adultPrice * 0.75) : ((parseFloat(price) || 0) * (rate !== 1.0 ? rate : 1.0));
+            priceInput.value = curInfo.noDecimals ? Math.round(val) : val.toFixed(2);
         }
     } else if (type === "child_nobed") {
         if (qtyInput && (qtyInput.value === "" || parseInt(qtyInput.value) <= 0)) {
@@ -1180,7 +1295,8 @@ function selectPackageOption(itemEl, name, price, trip = "") {
         }
         const adultPrice = getCurrentAdultUnitPrice();
         if (priceInput) {
-            priceInput.value = (adultPrice > 0) ? (adultPrice * 0.50).toFixed(2) : (parseFloat(price) || 0).toFixed(2);
+            const val = (adultPrice > 0) ? (adultPrice * 0.50) : ((parseFloat(price) || 0) * (rate !== 1.0 ? rate : 1.0));
+            priceInput.value = curInfo.noDecimals ? Math.round(val) : val.toFixed(2);
         }
     } else if (type === "infant") {
         if (qtyInput && (qtyInput.value === "" || parseInt(qtyInput.value) <= 0)) {
@@ -1191,7 +1307,8 @@ function selectPackageOption(itemEl, name, price, trip = "") {
         }
     } else {
         if (priceInput) {
-            priceInput.value = parseFloat(price || 0).toFixed(2);
+            const val = (parseFloat(price || 0)) * (rate !== 1.0 ? rate : 1.0);
+            priceInput.value = curInfo.noDecimals ? Math.round(val) : val.toFixed(2);
         }
     }
 
@@ -1697,6 +1814,14 @@ function updateInvoice() {
         pEmailItem.style.display = (showEmail && emailVal !== "") ? "flex" : "none";
     }
 
+    let licenseVal = (document.getElementById("companyLicense")?.value || "").trim();
+    let showLicense = document.getElementById("showCompanyLicense") ? document.getElementById("showCompanyLicense").checked : false;
+    let pLicenseItem = document.getElementById("p_item_cLicense");
+    if (pLicenseItem) {
+        document.getElementById("p_cLicense").innerText = licenseVal;
+        pLicenseItem.style.display = (showLicense && licenseVal !== "") ? "flex" : "none";
+    }
+
     let webVal = (document.getElementById("companyWebsite")?.value || "").trim();
     let showWeb = document.getElementById("showCompanyWebsite") ? document.getElementById("showCompanyWebsite").checked : false;
     let pWebItem = document.getElementById("p_item_cWeb");
@@ -1767,6 +1892,8 @@ function updateInvoice() {
     let currentCust = document.getElementById("customerPreset")?.value || document.getElementById("customerName")?.value || "";
     let currentTrip = document.getElementById("tripName")?.value || "";
 
+    const curInfo = defaultCurrencyRates[currency] || { noDecimals: false };
+
     // Packages
     if (pkgRows.length > 0) {
         html += `<tr class="cat-row"><td colspan="5"><i class="fa-solid fa-suitcase"></i> PACKAGE</td></tr>`;
@@ -1780,9 +1907,9 @@ function updateInvoice() {
             let chargeableQty = isFoc ? Math.max(0, qty - focCount) : qty;
             let total = price * chargeableQty;
             subtotal += total;
-            row.querySelector(".lineTotal").innerText = total.toFixed(2);
+            row.querySelector(".lineTotal").innerText = curInfo.noDecimals ? Math.round(total).toLocaleString('en-US') : total.toFixed(2);
 
-            html += `<tr><td>${idx++}</td><td>${desc}</td><td>${chargeableQty} Pax</td><td>${price.toFixed(2)}</td><td>${total.toFixed(2)}</td></tr>`;
+            html += `<tr><td>${idx++}</td><td>${desc}</td><td>${chargeableQty} Pax</td><td>${curInfo.noDecimals ? Math.round(price).toLocaleString('en-US') : price.toFixed(2)}</td><td>${curInfo.noDecimals ? Math.round(total).toLocaleString('en-US') : total.toFixed(2)}</td></tr>`;
             if (isFoc) {
                 html += `<tr class="foc-row">
                     <td class="foc-tree-cell">
@@ -1813,9 +1940,9 @@ function updateInvoice() {
             let qty = parseInt(row.querySelector(".qty").value) || 0;
             let total = price * qty;
             subtotal += total;
-            row.querySelector(".lineTotal").innerText = total.toFixed(2);
+            row.querySelector(".lineTotal").innerText = curInfo.noDecimals ? Math.round(total).toLocaleString('en-US') : total.toFixed(2);
 
-            html += `<tr><td>${idx++}</td><td>${desc}</td><td>${qty} Pax</td><td>${price.toFixed(2)}</td><td>${total.toFixed(2)}</td></tr>`;
+            html += `<tr><td>${idx++}</td><td>${desc}</td><td>${qty} Pax</td><td>${curInfo.noDecimals ? Math.round(price).toLocaleString('en-US') : price.toFixed(2)}</td><td>${curInfo.noDecimals ? Math.round(total).toLocaleString('en-US') : total.toFixed(2)}</td></tr>`;
         });
     }
 
@@ -1848,14 +1975,14 @@ function updateInvoice() {
         }
     }
 
-    document.getElementById("s_pkgTot").innerText = currency + " " + subtotal.toFixed(2);
-    document.getElementById("s_dep").innerText = currency + " " + deposit.toFixed(2);
-    document.getElementById("s_bal").innerText = currency + " " + balance.toFixed(2);
+    document.getElementById("s_pkgTot").innerText = currency + " " + (curInfo.noDecimals ? Math.round(subtotal).toLocaleString('en-US') : subtotal.toFixed(2));
+    document.getElementById("s_dep").innerText = currency + " " + (curInfo.noDecimals ? Math.round(deposit).toLocaleString('en-US') : deposit.toFixed(2));
+    document.getElementById("s_bal").innerText = currency + " " + (curInfo.noDecimals ? Math.round(balance).toLocaleString('en-US') : balance.toFixed(2));
 
-    document.getElementById("s_sub").innerText = currency + " " + subtotal.toFixed(2);
+    document.getElementById("s_sub").innerText = currency + " " + (curInfo.noDecimals ? Math.round(subtotal).toLocaleString('en-US') : subtotal.toFixed(2));
     document.getElementById("s_taxPct").innerText = taxPct;
-    document.getElementById("s_taxVal").innerText = currency + " " + taxVal.toFixed(2);
-    document.getElementById("s_grand").innerText = currency + " " + grand.toFixed(2);
+    document.getElementById("s_taxVal").innerText = currency + " " + (curInfo.noDecimals ? Math.round(taxVal).toLocaleString('en-US') : taxVal.toFixed(2));
+    document.getElementById("s_grand").innerText = currency + " " + (curInfo.noDecimals ? Math.round(grand).toLocaleString('en-US') : grand.toFixed(2));
 
     // 6. Approved By Signature
     let sigName = (document.getElementById("approvedByName")?.value || "").trim();
@@ -2134,10 +2261,12 @@ function saveInvoice() {
 
     let data = {
         currency: document.getElementById("currency").value,
+        exchangeRate: currentAppliedRate,
         companyName: document.getElementById("companyName").value,
         companyAddress: document.getElementById("companyAddress").value,
         companyPhone: document.getElementById("companyPhone").value,
         companyEmail: document.getElementById("companyEmail").value,
+        companyLicense: document.getElementById("companyLicense") ? document.getElementById("companyLicense").value : "",
         companyWebsite: document.getElementById("companyWebsite").value,
         logoData: logoData,
         signatureData: signatureData,
@@ -2159,6 +2288,7 @@ function saveInvoice() {
         enableTax: document.getElementById("enableTax") ? document.getElementById("enableTax").checked : false,
         approvedByName: document.getElementById("approvedByName") ? document.getElementById("approvedByName").value : "",
         showCompanyEmail: document.getElementById("showCompanyEmail") ? document.getElementById("showCompanyEmail").checked : false,
+        showCompanyLicense: document.getElementById("showCompanyLicense") ? document.getElementById("showCompanyLicense").checked : false,
         showCompanyWebsite: document.getElementById("showCompanyWebsite") ? document.getElementById("showCompanyWebsite").checked : false,
         showCustomerSocial: document.getElementById("showCustomerSocial") ? document.getElementById("showCustomerSocial").checked : false,
         social: [],
@@ -2227,7 +2357,7 @@ function loadInvoice(event) {
         try {
             let data = JSON.parse(e.target.result);
 
-            let fields = ["currency", "companyName", "companyAddress", "companyPhone", "companyEmail", "companyWebsite", "invoiceNo", "invoiceDate", "dueDate", "customerName", "customerAddress", "customerSocial", "tripName", "tripDate", "tripPax", "tripConsultant", "groupSize", "paymentTerms", "paymentMode", "depositPaid", "tax", "approvedByName"];
+            let fields = ["currency", "companyName", "companyAddress", "companyPhone", "companyEmail", "companyLicense", "companyWebsite", "invoiceNo", "invoiceDate", "dueDate", "customerName", "customerAddress", "customerSocial", "tripName", "tripDate", "tripPax", "tripConsultant", "groupSize", "paymentTerms", "paymentMode", "depositPaid", "tax", "approvedByName"];
 
             fields.forEach(id => {
                 if (data[id] !== undefined && document.getElementById(id)) {
@@ -2295,8 +2425,37 @@ function loadInvoice(event) {
                 }
             }
 
+            if (data.currency) {
+                document.getElementById("currency").value = data.currency;
+            }
+            if (data.exchangeRate !== undefined) {
+                currentAppliedRate = data.exchangeRate;
+            } else {
+                const curInfo = defaultCurrencyRates[data.currency || "RM"] || { rate: 1 };
+                currentAppliedRate = curInfo.rate;
+            }
+            const rateBox = document.getElementById("exchangeRateBox");
+            const rateInput = document.getElementById("customExchangeRate");
+            const rateTargetCode = document.getElementById("rateTargetCode");
+            const rateTargetSymbol = document.getElementById("rateTargetSymbol");
+            const rateInfoText = document.getElementById("rateInfoText");
+            const cur = data.currency || "RM";
+            const curInfo = defaultCurrencyRates[cur] || { rate: 1, code: cur, symbol: cur, noDecimals: false };
+            if (cur !== "RM") {
+                if (rateBox) rateBox.style.display = "block";
+                if (rateInput) rateInput.value = currentAppliedRate;
+                if (rateTargetCode) rateTargetCode.innerText = curInfo.code;
+                if (rateTargetSymbol) rateTargetSymbol.innerText = curInfo.symbol;
+                if (rateInfoText) rateInfoText.innerText = `Default fixed rate: 1 MYR = ${curInfo.rate.toLocaleString('en-US')} ${curInfo.symbol}`;
+            } else {
+                if (rateBox) rateBox.style.display = "none";
+            }
+
             if (document.getElementById("showCompanyEmail")) {
                 document.getElementById("showCompanyEmail").checked = data.showCompanyEmail !== undefined ? data.showCompanyEmail : false;
+            }
+            if (document.getElementById("showCompanyLicense")) {
+                document.getElementById("showCompanyLicense").checked = data.showCompanyLicense !== undefined ? data.showCompanyLicense : false;
             }
             if (document.getElementById("showCompanyWebsite")) {
                 document.getElementById("showCompanyWebsite").checked = data.showCompanyWebsite !== undefined ? data.showCompanyWebsite : false;

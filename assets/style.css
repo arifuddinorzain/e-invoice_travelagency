@@ -380,8 +380,16 @@ body {
     justify-content: space-between;
     align-items: flex-end;
     margin: 15px 40px 20px 40px;
+    gap: 12px;
     page-break-inside: avoid;
     break-inside: avoid;
+}
+
+.bank-accounts-container {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    align-items: stretch;
 }
 
 .bank-info-box {
@@ -389,22 +397,24 @@ body {
     border: 1px solid #e2e8f0;
     border-left: 3px solid #EF6C00;
     border-radius: 6px;
-    padding: 8px 12px;
-    max-width: 320px;
-    font-size: 11px;
+    padding: 6px 9px;
+    flex: 1;
+    max-width: 260px;
+    font-size: 10px;
     color: #475569;
-    line-height: 1.4;
+    line-height: 1.35;
     text-align: left;
+    box-sizing: border-box;
 }
 
 .bank-info-title {
-    font-size: 10.5px;
+    font-size: 10px;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     color: #1e293b;
-    margin-bottom: 5px;
-    padding-bottom: 4px;
+    margin-bottom: 4px;
+    padding-bottom: 3px;
     border-bottom: 1px dashed #e2e8f0;
     display: flex;
     align-items: center;
@@ -413,18 +423,18 @@ body {
 .bank-info-grid {
     display: flex;
     flex-direction: column;
-    gap: 2.5px;
+    gap: 2px;
 }
 
 .bank-row {
     display: flex;
-    gap: 6px;
+    gap: 4px;
 }
 
 .bank-lbl {
     color: #64748b;
     font-weight: 500;
-    min-width: 68px;
+    min-width: 60px;
     flex-shrink: 0;
 }
 
