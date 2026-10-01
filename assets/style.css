@@ -56,7 +56,18 @@ body {
 
 .header-left {
     width: 35%;
-    padding: 40px;
+    padding: 20px 30px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+#previewLogo {
+    max-width: 230px;
+    max-height: 165px;
+    width: auto;
+    height: auto;
+    object-fit: contain;
 }
 
 .header-center {
