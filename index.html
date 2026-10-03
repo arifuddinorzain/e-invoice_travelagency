@@ -9,12 +9,11 @@
     <title>Invoice Generator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="assets/style.css?v=20">
+    <link rel="stylesheet" href="assets/style.css?v=26">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -414,7 +413,7 @@
                 <button type="button"
                     class="btn btn-primary w-100 fw-bold py-2 shadow-sm d-flex justify-content-center align-items-center gap-2 mb-2"
                     onclick="saveInvoice()"><i class="fa-solid fa-download"></i> Save Draft (.inv)</button>
-                <button onclick="downloadPDF()"
+                <button type="button" id="btnDownloadPDF" onclick="downloadPDF()"
                     class="btn btn-warning w-100 fw-bold py-2 shadow-sm d-flex justify-content-center align-items-center gap-2"
                     style="background-color: #EF6C00; color: white; border: none;"><i class="fa-solid fa-file-pdf"></i>
                     Download PDF</button>
@@ -430,7 +429,8 @@
                         <!-- Header -->
                         <div class="header-banner">
                             <div class="header-left">
-                                <img id="previewLogo" src="travellogo.jpeg" alt="Logo" style="max-width:230px; max-height:165px; object-fit:contain;">
+                                <img id="previewLogo" src="travellogo.jpeg" alt="Logo"
+                                    style="max-width:230px; max-height:165px; object-fit:contain;">
                             </div>
                             <div class="header-center">
                                 <div class="contact-item" id="p_item_cAddress"><i class="fa-solid fa-location-dot"></i>
@@ -463,7 +463,10 @@
                         <div class="grid-2col">
                             <!-- Bill To -->
                             <div class="box-section">
-                                <div class="box-title">BILL TO</div>
+                                <div class="box-title">
+                                    <span class="box-title-vi">KHÁCH HÀNG</span>
+                                    <span class="box-title-en">(BILL TO)</span>
+                                </div>
                                 <h3 id="p_custName"></h3>
                                 <p id="p_custAddr"></p>
                                 <p id="p_item_custSoc" style="display:none;"><i class="fa-brands fa-facebook"></i> <span
@@ -471,22 +474,57 @@
                             </div>
                             <!-- Trip Details -->
                             <div class="box-section">
-                                <div class="box-title">TRIP DETAILS</div>
+                                <div class="box-title">
+                                    <span class="box-title-vi">THÔNG TIN TOUR</span>
+                                    <span class="box-title-en">(TRIP DETAILS)</span>
+                                </div>
                                 <table class="trip-table">
                                     <tr>
-                                        <td><i class="fa-solid fa-suitcase"></i> Trip Name</td>
+                                        <td class="trip-lbl-cell">
+                                            <div class="trip-lbl-flex">
+                                                <i class="fa-solid fa-suitcase"></i>
+                                                <div class="trip-lbl-block">
+                                                    <div class="lbl-vi">Tên tour</div>
+                                                    <div class="lbl-en">(Trip Name)</div>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td id="p_tripName"></td>
                                     </tr>
                                     <tr>
-                                        <td><i class="fa-regular fa-calendar"></i> Travel Date</td>
+                                        <td class="trip-lbl-cell">
+                                            <div class="trip-lbl-flex">
+                                                <i class="fa-regular fa-calendar"></i>
+                                                <div class="trip-lbl-block">
+                                                    <div class="lbl-vi">Ngày khởi hành</div>
+                                                    <div class="lbl-en">(Travel Date)</div>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td id="p_tripDate"></td>
                                     </tr>
                                     <tr>
-                                        <td><i class="fa-solid fa-users"></i> No. Of Pax</td>
+                                        <td class="trip-lbl-cell">
+                                            <div class="trip-lbl-flex">
+                                                <i class="fa-solid fa-users"></i>
+                                                <div class="trip-lbl-block">
+                                                    <div class="lbl-vi">Số lượng khách</div>
+                                                    <div class="lbl-en">(No. Of Pax)</div>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td id="p_tripPax"></td>
                                     </tr>
                                     <tr>
-                                        <td><i class="fa-solid fa-user-tie"></i> Sales Consultant</td>
+                                        <td class="trip-lbl-cell">
+                                            <div class="trip-lbl-flex">
+                                                <i class="fa-solid fa-user-tie"></i>
+                                                <div class="trip-lbl-block">
+                                                    <div class="lbl-vi">Tư vấn viên</div>
+                                                    <div class="lbl-en">(Sales Consultant)</div>
+                                                </div>
+                                            </div>
+                                        </td>
                                         <td id="p_tripCons"></td>
                                     </tr>
                                 </table>
@@ -495,13 +533,45 @@
 
                         <!-- Meta Bar -->
                         <div class="meta-bar">
-                            <div><i class="fa-solid fa-user"></i> <span>Sales Agent<br><b id="m_agent"></b></span></div>
-                            <div><i class="fa-solid fa-users"></i> <span>Group Size<br><b id="m_size"></b></span></div>
-                            <div><i class="fa-solid fa-file-invoice"></i> <span>Payment Terms<br><b
-                                        id="m_terms"></b></span></div>
-                            <div><i class="fa-solid fa-credit-card"></i> <span>Mode of Payment<br><b
-                                        id="m_mode"></b></span></div>
-                            <div><i class="fa-solid fa-calendar-days"></i> <span>Due Date<br><b id="m_due"></b></span>
+                            <div class="meta-item">
+                                <i class="fa-solid fa-user"></i>
+                                <div class="meta-text-wrap">
+                                    <div class="meta-lbl-vi">Đại lý</div>
+                                    <div class="meta-lbl-en">(Sales Agent)</div>
+                                    <b id="m_agent"></b>
+                                </div>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fa-solid fa-users"></i>
+                                <div class="meta-text-wrap">
+                                    <div class="meta-lbl-vi">Quy mô đoàn</div>
+                                    <div class="meta-lbl-en">(Group Size)</div>
+                                    <b id="m_size"></b>
+                                </div>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fa-solid fa-file-invoice"></i>
+                                <div class="meta-text-wrap">
+                                    <div class="meta-lbl-vi">Điều khoản TT</div>
+                                    <div class="meta-lbl-en">(Payment Terms)</div>
+                                    <b id="m_terms"></b>
+                                </div>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fa-solid fa-credit-card"></i>
+                                <div class="meta-text-wrap">
+                                    <div class="meta-lbl-vi">Hình thức TT</div>
+                                    <div class="meta-lbl-en">(Mode of Payment)</div>
+                                    <b id="m_mode"></b>
+                                </div>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fa-solid fa-calendar-days"></i>
+                                <div class="meta-text-wrap">
+                                    <div class="meta-lbl-vi">Hạn thanh toán</div>
+                                    <div class="meta-lbl-en">(Due Date)</div>
+                                    <b id="m_due"></b>
+                                </div>
                             </div>
                         </div>
 
@@ -509,11 +579,36 @@
                         <table class="main-table">
                             <thead>
                                 <tr>
-                                    <th>#</th>
-                                    <th>DESCRIPTION</th>
-                                    <th>QTY</th>
-                                    <th>UNIT PRICE (<span class="p_currency_lbl">RM</span>)</th>
-                                    <th>TOTAL (<span class="p_currency_lbl">RM</span>)</th>
+                                    <th class="th-stt">
+                                        <div class="th-header-cell">
+                                            <div class="th-vi">STT</div>
+                                            <div class="th-en">(No)</div>
+                                        </div>
+                                    </th>
+                                    <th class="th-desc">
+                                        <div class="th-header-cell text-start">
+                                            <div class="th-vi">Tên hàng hóa, dịch vụ</div>
+                                            <div class="th-en">(Description)</div>
+                                        </div>
+                                    </th>
+                                    <th class="th-qty">
+                                        <div class="th-header-cell">
+                                            <div class="th-vi">Số lượng</div>
+                                            <div class="th-en">(Quantity)</div>
+                                        </div>
+                                    </th>
+                                    <th class="th-price">
+                                        <div class="th-header-cell">
+                                            <div class="th-vi">Đơn giá (<span class="p_currency_lbl">RM</span>)</div>
+                                            <div class="th-en">(Unit Price)</div>
+                                        </div>
+                                    </th>
+                                    <th class="th-total">
+                                        <div class="th-header-cell">
+                                            <div class="th-vi">Thành tiền (<span class="p_currency_lbl">RM</span>)</div>
+                                            <div class="th-en">(Amount)</div>
+                                        </div>
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody id="p_items">
@@ -526,19 +621,53 @@
                             <!-- Summary -->
                             <div class="summary-area">
                                 <div class="payment-summary">
-                                    <div class="sum-title"><i class="fa-solid fa-credit-card"></i> PAYMENT SUMMARY</div>
-                                    <div class="sum-row"><span>Package Total</span><span id="s_pkgTot">RM 0.00</span>
+                                    <div class="sum-title">
+                                        <i class="fa-solid fa-credit-card"></i>
+                                        <span>TỔNG KẾT THANH TOÁN <small class="sum-title-en">(PAYMENT SUMMARY)</small></span>
                                     </div>
-                                    <div class="sum-row orange"><span>Deposit Paid</span><span id="s_dep">RM 0.00</span>
+                                    <div class="sum-row">
+                                        <div class="sum-lbl-wrap">
+                                            <div class="sum-lbl-vi">Tổng tiền tour</div>
+                                            <div class="sum-lbl-en">(Package Total)</div>
+                                        </div>
+                                        <span id="s_pkgTot">RM 0.00</span>
                                     </div>
-                                    <div class="sum-balance"><span>BALANCE DUE</span><span id="s_bal">RM 0.00</span>
+                                    <div class="sum-row orange">
+                                        <div class="sum-lbl-wrap">
+                                            <div class="sum-lbl-vi">Đã đặt cọc</div>
+                                            <div class="sum-lbl-en">(Deposit Paid)</div>
+                                        </div>
+                                        <span id="s_dep">RM 0.00</span>
+                                    </div>
+                                    <div class="sum-balance">
+                                        <div class="sum-lbl-wrap">
+                                            <div class="sum-lbl-vi">SỐ TIỀN CÒN LẠI</div>
+                                            <div class="sum-lbl-en" style="color: #333;">(BALANCE DUE)</div>
+                                        </div>
+                                        <span id="s_bal">RM 0.00</span>
                                     </div>
                                 </div>
                                 <div class="total-summary">
-                                    <div class="sum-row"><span>Subtotal</span><span id="s_sub">RM 0.00</span></div>
-                                    <div class="sum-row" id="p_taxRow" style="display:none;"><span>Tax (SST <span
-                                                id="s_taxPct">0</span>%)</span><span id="s_taxVal">RM 0.00</span></div>
-                                    <div class="grand-total"><span>TOTAL AMOUNT</span><span id="s_grand">RM 0.00</span>
+                                    <div class="sum-row">
+                                        <div class="sum-lbl-wrap">
+                                            <div class="sum-lbl-vi">Tạm tính</div>
+                                            <div class="sum-lbl-en">(Subtotal)</div>
+                                        </div>
+                                        <span id="s_sub">RM 0.00</span>
+                                    </div>
+                                    <div class="sum-row" id="p_taxRow" style="display:none;">
+                                        <div class="sum-lbl-wrap">
+                                            <div class="sum-lbl-vi">Thuế (SST <span id="s_taxPct">0</span>%)</div>
+                                            <div class="sum-lbl-en">(Tax)</div>
+                                        </div>
+                                        <span id="s_taxVal">RM 0.00</span>
+                                    </div>
+                                    <div class="grand-total">
+                                        <div class="sum-lbl-wrap">
+                                            <div class="sum-lbl-vi">TỔNG CỘNG</div>
+                                            <div class="sum-lbl-en" style="color: #ffeedd;">(TOTAL AMOUNT)</div>
+                                        </div>
+                                        <span id="s_grand">RM 0.00</span>
                                     </div>
                                 </div>
                             </div>
@@ -549,26 +678,27 @@
                                 <div class="bank-info-box">
                                     <div class="bank-info-title">
                                         <i class="fa-solid fa-building-columns me-1" style="color: #EF6C00;"></i>
-                                        Bank Account Details
+                                        <span>Thông tin tài khoản <small style="font-size: 8.5px; font-weight: normal; font-style: italic; text-transform: none; color: #64748b;">(Bank Details)</small></span>
                                     </div>
                                     <div class="bank-info-grid">
-                                        <div class="bank-row"><span class="bank-lbl">No acc:</span> <span
+                                        <div class="bank-row"><span class="bank-lbl">Số TK <small style="font-size: 8.5px; font-style: italic;">(Acc)</small>:</span> <span
                                                 class="bank-val fw-bold">3743168 (VND) / 50150357 (USD)</span></div>
-                                        <div class="bank-row"><span class="bank-lbl">Bank:</span> <span
+                                        <div class="bank-row"><span class="bank-lbl">Ngân hàng <small style="font-size: 8.5px; font-style: italic;">(Bank)</small>:</span> <span
                                                 class="bank-val">TMCP Á Châu (ACB)</span></div>
-                                        <div class="bank-row"><span class="bank-lbl">Name:</span> <span
+                                        <div class="bank-row"><span class="bank-lbl">Tên TK <small style="font-size: 8.5px; font-style: italic;">(Name)</small>:</span> <span
                                                 class="bank-val">SELAMATVN TOUR AND TRAVEL</span></div>
-                                        <div class="bank-row"><span class="bank-lbl">Swiftcode:</span> <span
+                                        <div class="bank-row"><span class="bank-lbl">Mã Swift <small style="font-size: 8.5px; font-style: italic;">(Swift)</small>:</span> <span
                                                 class="bank-val fw-bold">ASCBVNVX</span></div>
                                     </div>
                                 </div>
 
                                 <!-- Signature Area (Bottom Right) -->
                                 <div class="sig-box">
-                                    <div class="sig-header">Approved By</div>
+                                    <div class="sig-header">Người duyệt</div>
+                                    <div class="sig-sub" style="font-size: 10px; font-style: italic; color: #444; margin-bottom: 2px;">(Approved By)</div>
                                     <div class="sig-img-container">
                                         <img id="previewSignature" src="signature.png" alt="Signature"
-                                            style="display:block; max-height: 50px; max-width: 150px; margin: 4px auto; object-fit: contain;">
+                                             style="display:block; max-height: 50px; max-width: 150px; margin: 4px auto; object-fit: contain;">
                                     </div>
                                     <div class="sig-name-bottom" id="p_sigNameBottom">N. VAN CHIEU</div>
                                 </div>
@@ -581,7 +711,7 @@
         </div>
     </div>
 
-    <script src="assets/script.js?v=55"></script>
+    <script src="assets/script.js?v=59"></script>
 </body>
 
 </html>

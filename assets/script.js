@@ -1545,6 +1545,33 @@ function generateInvoiceNo(companyKeyOrName) {
 
 let tripDatePicker = null;
 
+function autoCalculateDueDateFromTripDate(selectedDates, dateStr) {
+    let firstDate = null;
+    if (selectedDates && selectedDates.length > 0 && selectedDates[0] instanceof Date && !isNaN(selectedDates[0].getTime())) {
+        firstDate = selectedDates[0];
+    } else {
+        const rawStr = dateStr || document.getElementById("tripDate")?.value || "";
+        if (rawStr) {
+            const firstPart = rawStr.split(/ to | - /)[0].trim();
+            const parsed = parseDateParts(firstPart);
+            if (parsed) {
+                firstDate = new Date(parseInt(parsed.year, 10), parseInt(parsed.month, 10) - 1, parseInt(parsed.day, 10));
+            }
+        }
+    }
+
+    if (firstDate && !isNaN(firstDate.getTime())) {
+        const due = new Date(firstDate.getFullYear(), firstDate.getMonth(), firstDate.getDate() - 20);
+        const yyyy = due.getFullYear();
+        const mm = String(due.getMonth() + 1).padStart(2, '0');
+        const dd = String(due.getDate()).padStart(2, '0');
+        const dueDateEl = document.getElementById("dueDate");
+        if (dueDateEl) {
+            dueDateEl.value = `${yyyy}-${mm}-${dd}`;
+        }
+    }
+}
+
 function initTripDatePicker() {
     const el = document.getElementById("tripDate");
     if (!el || typeof flatpickr === "undefined") return;
@@ -1558,9 +1585,15 @@ function initTripDatePicker() {
         },
         allowInput: true,
         onChange: function (selectedDates, dateStr, instance) {
+            if (selectedDates && selectedDates.length > 0) {
+                autoCalculateDueDateFromTripDate(selectedDates, dateStr);
+            }
             updateInvoice();
         },
         onClose: function (selectedDates, dateStr, instance) {
+            if (selectedDates && selectedDates.length > 0) {
+                autoCalculateDueDateFromTripDate(selectedDates, dateStr);
+            }
             updateInvoice();
         }
     });
@@ -2124,6 +2157,18 @@ if (tripPaxEl) {
     });
 }
 
+const tripDateEl = document.getElementById("tripDate");
+if (tripDateEl) {
+    tripDateEl.addEventListener("change", function () {
+        autoCalculateDueDateFromTripDate(null, this.value);
+        updateInvoice();
+    });
+    tripDateEl.addEventListener("input", function () {
+        autoCalculateDueDateFromTripDate(null, this.value);
+        updateInvoice();
+    });
+}
+
 // Close package, addon, trip & consultant dropdowns when clicking outside
 document.addEventListener("click", function (e) {
     if (!e.target.closest(".position-relative")) {
@@ -2185,48 +2230,23 @@ function removeSignature() {
     }
 }
 
-let lastConfettiTime = 0;
-const CONFETTI_COOLDOWN_MS = 3500; // 3.5s cooldown to prevent particle spam
-
-function triggerDownloadConfetti() {
-    const now = Date.now();
-    if (now - lastConfettiTime < CONFETTI_COOLDOWN_MS) {
-        return; // In cooldown
-    }
-    lastConfettiTime = now;
-
-    if (typeof confetti === "function") {
-        // Cannon from left & right
-        confetti({
-            particleCount: 60,
-            angle: 60,
-            spread: 60,
-            origin: { x: 0.05, y: 0.8 },
-            colors: ['#ff7a00', '#ffae00', '#00b4d8', '#7209b7', '#4ade80']
-        });
-        confetti({
-            particleCount: 60,
-            angle: 120,
-            spread: 60,
-            origin: { x: 0.95, y: 0.8 },
-            colors: ['#ff7a00', '#ffae00', '#00b4d8', '#7209b7', '#4ade80']
-        });
-
-        // Center burst after short delay
-        setTimeout(() => {
-            confetti({
-                particleCount: 90,
-                spread: 100,
-                origin: { y: 0.6 },
-                colors: ['#ff7a00', '#ff4500', '#ffd700', '#00c853', '#2979ff']
-            });
-        }, 220);
-    }
-}
+let isDownloadingPDF = false;
 
 function downloadPDF() {
+    if (isDownloadingPDF) return;
+
+    const btn = document.getElementById("btnDownloadPDF") || document.querySelector("button[onclick='downloadPDF()']");
+    const originalHTML = btn ? btn.innerHTML : '<i class="fa-solid fa-file-pdf"></i> Download PDF';
+
+    isDownloadingPDF = true;
+    if (btn) {
+        btn.disabled = true;
+        btn.style.cursor = 'not-allowed';
+        btn.style.opacity = '0.85';
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating PDF...';
+    }
+
     updateInvoice();
-    triggerDownloadConfetti();
     const invoice = document.getElementById("invoiceToDownload");
     const invNumber = document.getElementById("invoiceNo")?.value.trim() || "invoice";
 
@@ -2266,13 +2286,37 @@ function downloadPDF() {
                 clonedDoc.documentElement.style.margin = '0';
                 clonedDoc.documentElement.style.padding = '0';
                 clonedDoc.documentElement.style.fontSize = '16px';
+
+                // Ensure bottom block has proper top margin / gap when broken onto page 2
+                const clonedBottomBlock = clonedDoc.querySelector('.invoice-bottom-block');
+                if (clonedBottomBlock) {
+                    clonedBottomBlock.style.paddingTop = '35px';
+                }
             }
         },
-        pagebreak: { mode: ['css', 'legacy'], avoid: ['.invoice-bottom-block', '.summary-area', '.footer-signature-area'] },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.invoice-bottom-block', 'tr', '.cat-row'] },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    html2pdf().set(opt).from(invoice).save();
+    html2pdf().set(opt).from(invoice).save()
+        .then(() => {
+            // PDF saved successfully
+        })
+        .catch((err) => {
+            console.error("PDF generation failed:", err);
+            alert("Ralat semasa menjana PDF. Sila cuba lagi.");
+        })
+        .finally(() => {
+            setTimeout(() => {
+                isDownloadingPDF = false;
+                if (btn) {
+                    btn.disabled = false;
+                    btn.style.cursor = '';
+                    btn.style.opacity = '';
+                    btn.innerHTML = originalHTML;
+                }
+            }, 800);
+        });
 }
 
 // Init

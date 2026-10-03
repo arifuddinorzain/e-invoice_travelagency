@@ -161,14 +161,51 @@ body {
 }
 
 .trip-table td {
-    padding: 8px;
+    padding: 6px 8px;
     border-bottom: 1px solid #eee;
+    vertical-align: middle;
 }
 
 .trip-table td:first-child {
     background: #f9f9f9;
     color: #333;
     font-weight: 600;
+    width: 44%;
+}
+
+.trip-lbl-flex {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.trip-lbl-flex i {
+    font-size: 13px;
+    color: #0d1b32;
+    flex-shrink: 0;
+    width: 14px;
+    text-align: center;
+}
+
+.trip-lbl-block {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.lbl-vi {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.lbl-en {
+    display: block;
+    font-size: 9.5px;
+    font-weight: 500;
+    font-style: italic;
+    color: #64748b;
 }
 
 .meta-bar {
@@ -177,26 +214,53 @@ body {
     background: #f8f9fa;
     border: 1px solid #e0e0e0;
     border-radius: 6px;
-    padding: 15px;
+    padding: 10px 14px;
     justify-content: space-between;
     font-size: 10px;
+    gap: 6px;
 }
 
-.meta-bar div {
+.meta-item {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     color: #555;
+    flex: 1;
 }
 
-.meta-bar i {
-    font-size: 20px;
+.meta-item i {
+    font-size: 17px;
     color: #0d1b32;
+    flex-shrink: 0;
+}
+
+.meta-text-wrap {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+}
+
+.meta-lbl-vi {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.meta-lbl-en {
+    display: block;
+    font-size: 9px;
+    font-weight: 500;
+    font-style: italic;
+    color: #64748b;
+    margin-bottom: 2px;
 }
 
 .meta-bar b {
     color: #000;
     font-size: 11px;
+    font-weight: 700;
+    word-break: break-word;
 }
 
 .main-table {
@@ -209,16 +273,17 @@ body {
 .main-table th {
     background: #d0cb18;
     color: #000;
-    padding: 10px;
+    padding: 8px 10px;
     text-align: center;
+    vertical-align: middle;
     font-weight: 600;
 }
 
 .main-table th:first-child,
 .main-table td:first-child {
-    width: 38px;
-    min-width: 38px;
-    max-width: 42px;
+    width: 44px;
+    min-width: 44px;
+    max-width: 48px;
     text-align: center;
     padding-left: 4px;
     padding-right: 4px;
@@ -226,6 +291,39 @@ body {
 
 .main-table th:nth-child(2) {
     text-align: left;
+}
+
+.th-header-cell {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.25;
+}
+
+.th-header-cell.text-start {
+    align-items: flex-start !important;
+    text-align: left !important;
+}
+
+.th-vi {
+    display: block !important;
+    font-size: 11px;
+    font-weight: 700;
+    color: #000;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.th-en {
+    display: block !important;
+    font-size: 9.5px;
+    font-weight: 600;
+    font-style: italic;
+    color: #222;
+    margin-top: 1px;
+    white-space: nowrap;
 }
 
 .main-table td {
@@ -320,16 +418,15 @@ body {
 .invoice-bottom-block {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    padding-top: 35px;
 }
 
 .summary-area {
     display: flex;
-    margin: 20px 40px;
+    margin: 10px 40px 15px 40px;
     gap: 30px;
     justify-content: space-between;
     align-items: flex-end;
-    page-break-inside: avoid;
-    break-inside: avoid;
 }
 
 .payment-summary {
@@ -337,21 +434,56 @@ body {
     border: 1px solid #e0e0e0;
     border-radius: 6px;
     overflow: hidden;
-    font-size: 12px;
+    font-size: 11.5px;
 }
 
 .sum-title {
     background: #f4f6f8;
-    padding: 10px 15px;
+    padding: 8px 14px;
     font-weight: bold;
     color: #0d1b32;
+    font-size: 11.5px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.sum-title-en {
+    font-size: 9.5px;
+    font-weight: normal;
+    font-style: italic;
+    color: #64748b;
 }
 
 .sum-row {
     display: flex;
     justify-content: space-between;
-    padding: 10px 15px;
+    align-items: center;
+    padding: 8px 14px;
     border-bottom: 1px solid #f0f0f0;
+}
+
+.sum-lbl-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    line-height: 1.25;
+}
+
+.sum-lbl-vi {
+    display: block !important;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.sum-lbl-en {
+    display: block !important;
+    font-size: 9px;
+    font-weight: 500;
+    font-style: italic;
+    color: #64748b;
+    white-space: nowrap;
 }
 
 .sum-row.orange {
@@ -359,40 +491,61 @@ body {
     font-weight: bold;
 }
 
+.sum-row.orange .sum-lbl-en {
+    color: #f97316;
+}
+
 .sum-balance {
     display: flex;
     justify-content: space-between;
-    padding: 15px;
+    align-items: center;
+    padding: 12px 14px;
     background: #d0cb18;
     color: #000;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 13px;
+}
+
+.sum-balance .sum-lbl-vi {
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
 }
 
 .total-summary {
     width: 40%;
-    font-size: 12px;
+    font-size: 11.5px;
 }
 
 .grand-total {
     display: flex;
     justify-content: space-between;
+    align-items: center;
     margin-top: 10px;
     background: #EF6C00;
     color: white;
-    padding: 15px;
+    padding: 12px 14px;
     font-weight: bold;
-    font-size: 16px;
+    font-size: 15px;
     border-radius: 4px;
+}
+
+.grand-total .sum-lbl-vi {
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+}
+
+.grand-total .sum-lbl-en {
+    color: #ffeedd !important;
+    font-size: 9.5px;
 }
 
 .footer-signature-area {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
-    margin: 15px 40px 20px 40px;
-    page-break-inside: avoid;
-    break-inside: avoid;
+    margin: 15px 40px 25px 40px;
 }
 
 .bank-info-box {
