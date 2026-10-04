@@ -292,6 +292,34 @@
                                     style="top: 100%; left: 0; z-index: 1050; max-height: 180px; overflow-y: auto; display: none;">
                                 </div>
                             </div>
+
+                            <label class="form-label small fw-bold text-secondary mb-1">Package Include</label>
+                            <div class="d-flex flex-wrap gap-2 p-2 bg-light rounded border mb-1">
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input" type="checkbox" id="incMeals"
+                                        onchange="updateInvoice()">
+                                    <label class="form-check-label small" for="incMeals" style="cursor: pointer;"><i
+                                            class="fa-solid fa-utensils text-orange-500 me-1"></i> Meals</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input" type="checkbox" id="incTransport"
+                                        onchange="updateInvoice()">
+                                    <label class="form-check-label small" for="incTransport" style="cursor: pointer;"><i
+                                            class="fa-solid fa-van-shuttle text-orange-500 me-1"></i> Transport</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input" type="checkbox" id="incHotel"
+                                        onchange="updateInvoice()">
+                                    <label class="form-check-label small" for="incHotel" style="cursor: pointer;"><i
+                                            class="fa-solid fa-hotel text-orange-500 me-1"></i> Hotel</label>
+                                </div>
+                                <div class="form-check form-check-inline m-0">
+                                    <input class="form-check-input" type="checkbox" id="incTicket"
+                                        onchange="updateInvoice()">
+                                    <label class="form-check-label small" for="incTicket" style="cursor: pointer;"><i
+                                            class="fa-solid fa-ticket text-orange-500 me-1"></i> Ticket Activity</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -377,7 +405,8 @@
                                         title="Toggle Tax visibility in preview" onchange="updateInvoice()">
                                 </div>
                             </div>
-                            <input type="number" id="tax" value="8" placeholder="8" class="form-control form-control-sm">
+                            <input type="number" id="tax" value="8" placeholder="8"
+                                class="form-control form-control-sm">
                         </div>
                     </div>
                 </div>
@@ -527,6 +556,18 @@
                                         </td>
                                         <td id="p_tripCons"></td>
                                     </tr>
+                                    <tr>
+                                        <td class="trip-lbl-cell">
+                                            <div class="trip-lbl-flex">
+                                                <i class="fa-solid fa-list-check"></i>
+                                                <div class="trip-lbl-block">
+                                                    <div class="lbl-vi">Dịch vụ bao gồm</div>
+                                                    <div class="lbl-en">(Package Include)</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td id="p_tripIncludes"></td>
+                                    </tr>
                                 </table>
                             </div>
                         </div>
@@ -623,7 +664,8 @@
                                 <div class="payment-summary">
                                     <div class="sum-title">
                                         <i class="fa-solid fa-credit-card"></i>
-                                        <span>TỔNG KẾT THANH TOÁN <small class="sum-title-en">(PAYMENT SUMMARY)</small></span>
+                                        <span>TỔNG KẾT THANH TOÁN <small class="sum-title-en">(PAYMENT
+                                                SUMMARY)</small></span>
                                     </div>
                                     <div class="sum-row">
                                         <div class="sum-lbl-wrap">
@@ -678,27 +720,35 @@
                                 <div class="bank-info-box">
                                     <div class="bank-info-title">
                                         <i class="fa-solid fa-building-columns me-1" style="color: #EF6C00;"></i>
-                                        <span>Thông tin tài khoản <small style="font-size: 8.5px; font-weight: normal; font-style: italic; text-transform: none; color: #64748b;">(Bank Details)</small></span>
+                                        <span>Thông tin tài khoản <small
+                                                style="font-size: 8.5px; font-weight: normal; font-style: italic; text-transform: none; color: #64748b;">(Bank
+                                                Details)</small></span>
                                     </div>
                                     <div class="bank-info-grid">
-                                        <div class="bank-row"><span class="bank-lbl">Số TK <small style="font-size: 8.5px; font-style: italic;">(Acc)</small>:</span> <span
-                                                class="bank-val fw-bold">3743168 (VND) / 50150357 (USD)</span></div>
-                                        <div class="bank-row"><span class="bank-lbl">Ngân hàng <small style="font-size: 8.5px; font-style: italic;">(Bank)</small>:</span> <span
-                                                class="bank-val">TMCP Á Châu (ACB)</span></div>
-                                        <div class="bank-row"><span class="bank-lbl">Tên TK <small style="font-size: 8.5px; font-style: italic;">(Name)</small>:</span> <span
-                                                class="bank-val">SELAMATVN TOUR AND TRAVEL</span></div>
-                                        <div class="bank-row"><span class="bank-lbl">Mã Swift <small style="font-size: 8.5px; font-style: italic;">(Swift)</small>:</span> <span
-                                                class="bank-val fw-bold">ASCBVNVX</span></div>
+                                        <div class="bank-row"><span class="bank-lbl">Số TK <small
+                                                    style="font-size: 8.5px; font-style: italic;">(Acc)</small>:</span>
+                                            <span class="bank-val fw-bold">3743168 (VND) / 50150357 (USD)</span></div>
+                                        <div class="bank-row"><span class="bank-lbl">Ngân hàng <small
+                                                    style="font-size: 8.5px; font-style: italic;">(Bank)</small>:</span>
+                                            <span class="bank-val">TMCP Á Châu (ACB)</span></div>
+                                        <div class="bank-row"><span class="bank-lbl">Tên TK <small
+                                                    style="font-size: 8.5px; font-style: italic;">(Name)</small>:</span>
+                                            <span class="bank-val">SELAMATVN TOUR AND TRAVEL</span></div>
+                                        <div class="bank-row"><span class="bank-lbl">Mã Swift <small
+                                                    style="font-size: 8.5px; font-style: italic;">(Swift)</small>:</span>
+                                            <span class="bank-val fw-bold">ASCBVNVX</span></div>
                                     </div>
                                 </div>
 
                                 <!-- Signature Area (Bottom Right) -->
                                 <div class="sig-box">
                                     <div class="sig-header">Người duyệt</div>
-                                    <div class="sig-sub" style="font-size: 10px; font-style: italic; color: #444; margin-bottom: 2px;">(Approved By)</div>
+                                    <div class="sig-sub"
+                                        style="font-size: 10px; font-style: italic; color: #444; margin-bottom: 2px;">
+                                        (Approved By)</div>
                                     <div class="sig-img-container">
                                         <img id="previewSignature" src="signature.png" alt="Signature"
-                                             style="display:block; max-height: 50px; max-width: 150px; margin: 4px auto; object-fit: contain;">
+                                            style="display:block; max-height: 50px; max-width: 150px; margin: 4px auto; object-fit: contain;">
                                     </div>
                                     <div class="sig-name-bottom" id="p_sigNameBottom">N. VAN CHIEU</div>
                                 </div>
@@ -711,7 +761,7 @@
         </div>
     </div>
 
-    <script src="assets/script.js?v=62"></script>
+    <script src="assets/script.js?v=65"></script>
 </body>
 
 </html>

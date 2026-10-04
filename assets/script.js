@@ -2105,6 +2105,30 @@ function updateInvoice() {
     document.getElementById("p_tripPax").innerText = document.getElementById("tripPax").value;
     document.getElementById("p_tripCons").innerText = document.getElementById("tripConsultant").value;
 
+    // Package Includes
+    const includes = [];
+    if (document.getElementById("incMeals")?.checked) {
+        includes.push("Meals");
+    }
+    if (document.getElementById("incTransport")?.checked) {
+        includes.push("Transport");
+    }
+    if (document.getElementById("incHotel")?.checked) {
+        includes.push("Hotel");
+    }
+    if (document.getElementById("incTicket")?.checked) {
+        includes.push("Ticket Activity");
+    }
+
+    const pIncludesEl = document.getElementById("p_tripIncludes");
+    if (pIncludesEl) {
+        if (includes.length > 0) {
+            pIncludesEl.innerText = includes.join(", ");
+        } else {
+            pIncludesEl.innerHTML = `<span class="text-muted fst-italic" style="font-size: 10px;">-</span>`;
+        }
+    }
+
     // 3. Meta Info
     document.getElementById("m_agent").innerText = document.getElementById("tripConsultant").value; // Sync
     document.getElementById("m_size").innerText = document.getElementById("groupSize").value;
@@ -2211,8 +2235,14 @@ function updateInvoice() {
     document.getElementById("s_bal").innerText = currency + " " + (curInfo.noDecimals ? Math.round(balance).toLocaleString('en-US') : balance.toFixed(2));
 
     document.getElementById("s_sub").innerText = currency + " " + (curInfo.noDecimals ? Math.round(subtotal).toLocaleString('en-US') : subtotal.toFixed(2));
-    document.getElementById("s_taxPct").innerText = taxPct;
-    document.getElementById("s_taxVal").innerText = currency + " " + (curInfo.noDecimals ? Math.round(taxVal).toLocaleString('en-US') : taxVal.toFixed(2));
+    let sTaxPct = document.getElementById("s_taxPct");
+    if (sTaxPct) {
+        sTaxPct.innerText = taxPct;
+    }
+    let sTaxVal = document.getElementById("s_taxVal");
+    if (sTaxVal) {
+        sTaxVal.innerText = "";
+    }
     document.getElementById("s_grand").innerText = currency + " " + (curInfo.noDecimals ? Math.round(grand).toLocaleString('en-US') : grand.toFixed(2));
 
     // 6. Approved By Signature
@@ -2550,6 +2580,12 @@ function saveInvoice() {
         showCompanyLicense: document.getElementById("showCompanyLicense") ? document.getElementById("showCompanyLicense").checked : false,
         showCompanyWebsite: document.getElementById("showCompanyWebsite") ? document.getElementById("showCompanyWebsite").checked : false,
         showCustomerSocial: document.getElementById("showCustomerSocial") ? document.getElementById("showCustomerSocial").checked : false,
+        packageIncludes: {
+            meals: document.getElementById("incMeals") ? document.getElementById("incMeals").checked : false,
+            transport: document.getElementById("incTransport") ? document.getElementById("incTransport").checked : false,
+            hotel: document.getElementById("incHotel") ? document.getElementById("incHotel").checked : false,
+            ticket: document.getElementById("incTicket") ? document.getElementById("incTicket").checked : false,
+        },
         social: [],
         items: [],
         addons: []
@@ -2724,6 +2760,12 @@ function loadInvoice(event) {
             }
             if (document.getElementById("enableTax")) {
                 document.getElementById("enableTax").checked = data.enableTax !== undefined ? data.enableTax : true;
+            }
+            if (data.packageIncludes) {
+                if (document.getElementById("incMeals")) document.getElementById("incMeals").checked = !!data.packageIncludes.meals;
+                if (document.getElementById("incTransport")) document.getElementById("incTransport").checked = !!data.packageIncludes.transport;
+                if (document.getElementById("incHotel")) document.getElementById("incHotel").checked = !!data.packageIncludes.hotel;
+                if (document.getElementById("incTicket")) document.getElementById("incTicket").checked = !!data.packageIncludes.ticket;
             }
 
             document.getElementById("socialItems").innerHTML = "";
