@@ -167,6 +167,14 @@ function initCompanyDefault() {
     if (appNameEl && !appNameEl.value) {
         appNameEl.value = "N. VAN CHIEU";
     }
+    const taxToggle = document.getElementById("enableTax");
+    if (taxToggle && !taxToggle.checked) {
+        taxToggle.checked = true;
+    }
+    const taxInput = document.getElementById("tax");
+    if (taxInput && (!taxInput.value || taxInput.value === "0" || taxInput.value === "")) {
+        taxInput.value = "8";
+    }
 }
 
 const customerPresets = {
@@ -889,26 +897,179 @@ function getFocCount(customerKeyOrName, tripName, qty) {
     return 0;
 }
 
+function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
+function getItemBilingualDetails(rawDesc) {
+    if (!rawDesc) return { vi: "", en: "" };
+    const text = String(rawDesc).trim();
+    if (!text) return { vi: "", en: "" };
+
+    const lower = text.toLowerCase();
+    const clean = lower.replace(/[^a-z0-9]/g, '');
+
+    // 1. Ground Packages
+    const isGroundPkg = clean.includes("groundpackage") || clean.includes("ground") || clean.includes("pakejground") || clean.includes("package") || clean.includes("pakej");
+
+    // Infant / Baby
+    if ((isGroundPkg || clean.includes("infant") || clean.includes("baby") || clean.includes("bayi")) && (clean.includes("infant") || clean.includes("baby") || clean.includes("bayi") || clean.includes("embe") || clean.includes("tresosinh"))) {
+        return {
+            vi: "TOUR TRỌN GÓI (EM BÉ)",
+            en: text.toUpperCase().includes("GROUND PACKAGE") ? text : "GROUND PACKAGE (INFANT)"
+        };
+    }
+
+    // Child With Bed
+    if ((isGroundPkg || clean.includes("child") || clean.includes("kanak") || clean.includes("treem")) && (clean.includes("withbed") || clean.includes("adakatil") || clean.includes("berkatil") || clean.includes("cogiuong") || (clean.includes("bed") && !clean.includes("nobed") && !clean.includes("tanpakatil") && !clean.includes("withoutbed")))) {
+        return {
+            vi: "TOUR TRỌN GÓI (TRẺ EM CÓ GIƯỜNG)",
+            en: text.toUpperCase().includes("GROUND PACKAGE") ? text : "GROUND PACKAGE (CHILD WITH BED)"
+        };
+    }
+
+    // Child No Bed
+    if ((isGroundPkg || clean.includes("child") || clean.includes("kanak") || clean.includes("treem")) && (clean.includes("nobed") || clean.includes("tanpakatil") || clean.includes("withoutbed") || clean.includes("tiadakatil") || clean.includes("khonggiuong"))) {
+        return {
+            vi: "TOUR TRỌN GÓI (TRẺ EM KHÔNG GIƯỜNG)",
+            en: text.toUpperCase().includes("GROUND PACKAGE") ? text : "GROUND PACKAGE (CHILD NO BED)"
+        };
+    }
+
+    // Child General
+    if (clean.includes("child") || clean.includes("kanak") || clean.includes("treem")) {
+        return {
+            vi: "TOUR TRỌN GÓI (TRẺ EM)",
+            en: text
+        };
+    }
+
+    // Adult Ground Package
+    if (isGroundPkg && (clean.includes("adult") || clean.includes("dewasa") || clean.includes("nguoilon") || clean.includes("groundpackage") || clean.includes("ground"))) {
+        return {
+            vi: "TOUR TRỌN GÓI (NGƯỜI LỚN)",
+            en: text.toUpperCase().includes("GROUND PACKAGE") ? text : "GROUND PACKAGE (ADULT)"
+        };
+    }
+
+    if (clean === "adult" || clean === "dewasa") {
+        return {
+            vi: "TOUR TRỌN GÓI (NGƯỜI LỚN)",
+            en: text
+        };
+    }
+
+    // 2. Add-ons & Tour Attractions
+    if (clean.includes("vinwonders")) {
+        return {
+            vi: "Vé tham quan VinWonders",
+            en: text
+        };
+    }
+    if (clean.includes("vinsafari") || (clean.includes("vin") && clean.includes("safari")) || clean.includes("safari")) {
+        return {
+            vi: "Vé tham quan Vin Safari",
+            en: text
+        };
+    }
+    if (clean.includes("cablecar") || clean.includes("captreo")) {
+        return {
+            vi: "Vé Cáp treo",
+            en: text
+        };
+    }
+    if (clean.includes("airporttransfer") || (clean.includes("airport") && clean.includes("transfer"))) {
+        const isReturn = clean.includes("return") || clean.includes("2way") || clean.includes("khuhoi");
+        return {
+            vi: isReturn ? "Xe đưa đón sân bay (Khứ hồi)" : "Xe đưa đón sân bay",
+            en: text
+        };
+    }
+    if (clean.includes("insurance") || clean.includes("insurans")) {
+        return {
+            vi: "Bảo hiểm du lịch",
+            en: text
+        };
+    }
+    if (clean.includes("luggage") || clean.includes("bagasi")) {
+        return {
+            vi: "Hành lý ký gửi",
+            en: text
+        };
+    }
+    if (clean.includes("tourguide") || clean.includes("guide") || clean.includes("pemandupelancong")) {
+        return {
+            vi: "Hướng dẫn viên du lịch",
+            en: text
+        };
+    }
+    if (clean.includes("tipping") || clean.includes("tip")) {
+        return {
+            vi: "Tiền Tip (Tipping)",
+            en: text
+        };
+    }
+    if (clean.includes("hotel") || clean.includes("singlesupplement") || clean.includes("room")) {
+        return {
+            vi: "Phụ thu phòng / Khách sạn",
+            en: text
+        };
+    }
+
+    // Check if string already contains Vietnamese accents
+    if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(text)) {
+        return {
+            vi: text,
+            en: ""
+        };
+    }
+
+    return {
+        vi: text,
+        en: ""
+    };
+}
+
+function formatItemDescriptionHtml(desc) {
+    if (!desc || !String(desc).trim()) return `<span class="text-muted">-</span>`;
+    const details = getItemBilingualDetails(desc);
+
+    if (details.vi && details.en && details.vi.toLowerCase() !== details.en.toLowerCase()) {
+        return `
+            <div class="item-desc-vi">${escapeHtml(details.vi)}</div>
+            <div class="item-desc-en">(${escapeHtml(details.en)})</div>
+        `;
+    }
+
+    return `<div class="item-desc-vi">${escapeHtml(details.vi || desc)}</div>`;
+}
+
 function getPackageType(desc) {
     const s = (desc || "").toLowerCase();
     const clean = s.replace(/[^a-z0-9]/g, '');
     if (!clean) return "other";
 
-    if (clean.includes("infant") || clean.includes("baby") || clean.includes("bayi")) {
+    if (clean.includes("infant") || clean.includes("baby") || clean.includes("bayi") || clean.includes("embe") || clean.includes("tresosinh")) {
         return "infant";
     }
 
-    if (clean.includes("child") || clean.includes("kanak") || clean.includes("budak")) {
-        if (clean.includes("nobed") || clean.includes("withoutbed") || clean.includes("tanpakatil") || clean.includes("tiadakatil")) {
+    if (clean.includes("child") || clean.includes("kanak") || clean.includes("budak") || clean.includes("treem")) {
+        if (clean.includes("nobed") || clean.includes("withoutbed") || clean.includes("tanpakatil") || clean.includes("tiadakatil") || clean.includes("khonggiuong")) {
             return "child_nobed";
         }
-        if (clean.includes("bed") || clean.includes("withbed") || clean.includes("withbe") || clean.includes("berkatil") || clean.includes("adakatil")) {
+        if (clean.includes("withbed") || clean.includes("withbe") || clean.includes("berkatil") || clean.includes("adakatil") || clean.includes("cogiuong") || (clean.includes("bed") && !clean.includes("nobed") && !clean.includes("tanpakatil"))) {
             return "child_bed";
         }
         return "child_nobed";
     }
 
-    if (clean.includes("adult") || clean.includes("dewasa") || clean.includes("groundpackage") || clean.includes("ground")) {
+    if (clean.includes("adult") || clean.includes("dewasa") || clean.includes("nguoilon") || clean.includes("groundpackage") || clean.includes("ground")) {
         return "adult";
     }
 
@@ -1213,19 +1374,19 @@ function showPackageDropdown(inputEl) {
 
 function getPackageIcon(pkgName) {
     const clean = (pkgName || "").toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (clean.includes("infant") || clean.includes("baby")) {
-        return `<span class="d-inline-flex align-items-center justify-content-center px-1" style="font-size: 15px;" title="Infant"><i class="fa-solid fa-baby" style="color: #d63384;"></i></span>`;
+    if (clean.includes("infant") || clean.includes("baby") || clean.includes("bayi") || clean.includes("embe")) {
+        return `<span class="d-inline-flex align-items-center justify-content-center px-1" style="font-size: 15px;" title="Infant (Em bé)"><i class="fa-solid fa-baby" style="color: #d63384;"></i></span>`;
     }
-    if (clean.includes("child") && (clean.includes("bed") || clean.includes("withbed")) && !clean.includes("nobed")) {
-        return `<span class="d-inline-flex align-items-center justify-content-center gap-1 px-1" style="font-size: 15px;" title="Child With Bed"><i class="fa-solid fa-child" style="color: #0dcaf0;"></i><i class="fa-solid fa-bed" style="color: #0dcaf0; font-size: 12px;"></i></span>`;
+    if ((clean.includes("child") || clean.includes("kanak") || clean.includes("treem")) && (clean.includes("bed") || clean.includes("withbed") || clean.includes("cogiuong")) && !clean.includes("nobed") && !clean.includes("khonggiuong")) {
+        return `<span class="d-inline-flex align-items-center justify-content-center gap-1 px-1" style="font-size: 15px;" title="Child With Bed (Trẻ em có giường)"><i class="fa-solid fa-child" style="color: #0dcaf0;"></i><i class="fa-solid fa-bed" style="color: #0dcaf0; font-size: 12px;"></i></span>`;
     }
-    if (clean.includes("child")) {
-        return `<span class="d-inline-flex align-items-center justify-content-center px-1" style="font-size: 15px;" title="Child No Bed"><i class="fa-solid fa-child" style="color: #0dcaf0;"></i></span>`;
+    if (clean.includes("child") || clean.includes("kanak") || clean.includes("treem")) {
+        return `<span class="d-inline-flex align-items-center justify-content-center px-1" style="font-size: 15px;" title="Child No Bed (Trẻ em không giường)"><i class="fa-solid fa-child" style="color: #0dcaf0;"></i></span>`;
     }
-    if (clean.includes("adult")) {
-        return `<span class="d-inline-flex align-items-center justify-content-center px-1" style="font-size: 15px;" title="Adult"><i class="fa-solid fa-user" style="color: #0d6efd;"></i></span>`;
+    if (clean.includes("adult") || clean.includes("dewasa") || clean.includes("nguoilon")) {
+        return `<span class="d-inline-flex align-items-center justify-content-center px-1" style="font-size: 15px;" title="Adult (Người lớn)"><i class="fa-solid fa-user" style="color: #0d6efd;"></i></span>`;
     }
-    return `<span class="d-inline-flex align-items-center justify-content-center px-1" style="font-size: 15px;" title="Package"><i class="fa-solid fa-box text-warning"></i></span>`;
+    return `<span class="d-inline-flex align-items-center justify-content-center px-1" style="font-size: 15px;" title="Package (Gói tour)"><i class="fa-solid fa-box text-warning"></i></span>`;
 }
 
 function renderPackageDropdownItems(inputEl, dropdown, filterText = "") {
@@ -1241,12 +1402,15 @@ function renderPackageDropdownItems(inputEl, dropdown, filterText = "") {
     dropdown.innerHTML = filtered.map(pkg => {
         const tripBadge = (!selectedTrip && pkg.trip) ? `<span class="badge bg-light text-muted border ms-1" style="font-size: 9px;">${pkg.trip}</span>` : "";
         const iconHtml = getPackageIcon(pkg.name);
+        const details = getItemBilingualDetails(pkg.name);
+        const viSubtitle = (details.vi && details.vi.toLowerCase() !== pkg.name.toLowerCase()) ? `<div style="font-size: 10px; font-weight: 500; font-style: italic; color: #64748b; margin-top: 1px;">${details.vi}</div>` : "";
         return `
         <div class="package-opt-item d-flex justify-content-between align-items-center p-2 border-bottom text-dark"
             style="cursor: pointer;"
             onmousedown="selectPackageOption(this, '${pkg.name.replace(/'/g, "\'")}', ${pkg.price}, '${(pkg.trip || '').replace(/'/g, "\'")}')">
             <div class="pe-2 text-start" style="font-size: 11px; font-weight: 600; line-height: 1.35; word-break: break-word;">
-                ${pkg.name} ${tripBadge}
+                <div>${pkg.name} ${tripBadge}</div>
+                ${viSubtitle}
             </div>
             <div class="flex-shrink-0 text-end ps-2">
                 ${iconHtml}
@@ -1437,12 +1601,15 @@ function renderAddonDropdownItems(inputEl, dropdown, filterText = "") {
     dropdown.innerHTML = filtered.map(item => {
         const converted = getConvertedPrice(item.price);
         const displayPrice = formatPriceForInput(converted);
+        const details = getItemBilingualDetails(item.name);
+        const viSubtitle = (details.vi && details.vi.toLowerCase() !== item.name.toLowerCase()) ? `<div style="font-size: 10px; font-weight: 500; font-style: italic; color: #64748b; margin-top: 1px;">${details.vi}</div>` : "";
         return `
         <div class="addon-opt-item d-flex justify-content-between align-items-center p-2 border-bottom text-dark"
             style="cursor: pointer;"
             onmousedown="selectAddonOption(this, '${item.name.replace(/'/g, "\\'")}', ${item.price})">
             <div class="pe-2 text-start" style="font-size: 11px; font-weight: 600; line-height: 1.35; word-break: break-word;">
-                <i class="fa-solid fa-ticket text-orange-500 me-1"></i> ${item.name}
+                <div><i class="fa-solid fa-ticket text-orange-500 me-1"></i> ${item.name}</div>
+                ${viSubtitle}
             </div>
             <span class="badge bg-warning text-dark flex-shrink-0" style="font-size: 10px;">
                 ${cur} ${displayPrice}
@@ -1960,7 +2127,7 @@ function updateInvoice() {
 
     // Packages
     if (pkgRows.length > 0) {
-        html += `<tr class="cat-row"><td colspan="5"><i class="fa-solid fa-suitcase"></i> PACKAGE</td></tr>`;
+        html += `<tr class="cat-row"><td colspan="5"><i class="fa-solid fa-suitcase"></i> <span class="cat-lbl-vi">GÓI TOUR</span> <span class="cat-lbl-en">(PACKAGE)</span></td></tr>`;
         pkgRows.forEach(row => {
             let desc = row.querySelector(".desc").value;
             let price = parseFloat(row.querySelector(".price").value) || 0;
@@ -1973,7 +2140,7 @@ function updateInvoice() {
             subtotal += total;
             row.querySelector(".lineTotal").innerText = curInfo.noDecimals ? Math.round(total).toLocaleString('en-US') : total.toFixed(2);
 
-            html += `<tr><td>${idx++}</td><td>${desc}</td><td>${chargeableQty} Pax</td><td>${curInfo.noDecimals ? Math.round(price).toLocaleString('en-US') : price.toFixed(2)}</td><td>${curInfo.noDecimals ? Math.round(total).toLocaleString('en-US') : total.toFixed(2)}</td></tr>`;
+            html += `<tr><td>${idx++}</td><td class="item-desc-cell">${formatItemDescriptionHtml(desc)}</td><td>${chargeableQty} Pax</td><td>${curInfo.noDecimals ? Math.round(price).toLocaleString('en-US') : price.toFixed(2)}</td><td>${curInfo.noDecimals ? Math.round(total).toLocaleString('en-US') : total.toFixed(2)}</td></tr>`;
             if (isFoc) {
                 html += `<tr class="foc-row">
                     <td class="foc-tree-cell">
@@ -1983,8 +2150,8 @@ function updateInvoice() {
                     </td>
                     <td class="foc-desc">
                         <div class="foc-content">
-                            <span class="foc-badge">FOC</span>
-                            <span class="foc-text">(Free ${focCount} Pax)</span>
+                            <span class="foc-badge">MIỄN PHÍ / FOC</span>
+                            <span class="foc-text">Miễn phí ${focCount} khách <small style="font-size: 9.5px; font-style: italic; color: #64748b;">(Free ${focCount} Pax)</small></span>
                         </div>
                     </td>
                     <td>${focCount} Pax</td>
@@ -1997,7 +2164,7 @@ function updateInvoice() {
 
     // Addons
     if (addonRows.length > 0) {
-        html += `<tr class="cat-row"><td colspan="5"><i class="fa-solid fa-bag-shopping"></i> ADD-ON / SERVICE</td></tr>`;
+        html += `<tr class="cat-row"><td colspan="5"><i class="fa-solid fa-bag-shopping"></i> <span class="cat-lbl-vi">DỊCH VỤ BỔ SUNG</span> <span class="cat-lbl-en">(ADD-ON / SERVICE)</span></td></tr>`;
         addonRows.forEach(row => {
             let desc = row.querySelector(".desc").value;
             let price = parseFloat(row.querySelector(".price").value) || 0;
@@ -2006,12 +2173,12 @@ function updateInvoice() {
             subtotal += total;
             row.querySelector(".lineTotal").innerText = curInfo.noDecimals ? Math.round(total).toLocaleString('en-US') : total.toFixed(2);
 
-            html += `<tr><td>${idx++}</td><td>${desc}</td><td>${qty} Pax</td><td>${curInfo.noDecimals ? Math.round(price).toLocaleString('en-US') : price.toFixed(2)}</td><td>${curInfo.noDecimals ? Math.round(total).toLocaleString('en-US') : total.toFixed(2)}</td></tr>`;
+            html += `<tr><td>${idx++}</td><td class="item-desc-cell">${formatItemDescriptionHtml(desc)}</td><td>${qty} Pax</td><td>${curInfo.noDecimals ? Math.round(price).toLocaleString('en-US') : price.toFixed(2)}</td><td>${curInfo.noDecimals ? Math.round(total).toLocaleString('en-US') : total.toFixed(2)}</td></tr>`;
         });
     }
 
     if (html === "") {
-        html = `<tr><td colspan="5">No services added</td></tr>`;
+        html = `<tr><td colspan="5" class="text-muted fst-italic py-3">Chưa có dịch vụ nào <span style="font-size: 10px;">(No services added)</span></td></tr>`;
     }
 
     document.getElementById("p_items").innerHTML = html;
@@ -2272,12 +2439,21 @@ function downloadPDF() {
                 if (clonedInvoice) {
                     clonedInvoice.style.width = '794px';
                     clonedInvoice.style.maxWidth = '794px';
-                    clonedInvoice.style.minHeight = 'auto';
-                    clonedInvoice.style.height = 'auto';
                     clonedInvoice.style.margin = '0';
                     clonedInvoice.style.padding = '0';
                     clonedInvoice.style.boxShadow = 'none';
                     clonedInvoice.style.border = 'none';
+
+                    // If single page content, ensure it does not overflow 1122px (standard A4 height)
+                    const actualHeight = clonedInvoice.scrollHeight || clonedInvoice.offsetHeight;
+                    if (actualHeight <= 1125) {
+                        clonedInvoice.style.height = '1120px';
+                        clonedInvoice.style.maxHeight = '1122px';
+                        clonedInvoice.style.overflow = 'hidden';
+                    } else {
+                        clonedInvoice.style.height = 'auto';
+                        clonedInvoice.style.minHeight = 'auto';
+                    }
                 }
 
                 // Ensure body/html have no extra spacing
@@ -2287,18 +2463,25 @@ function downloadPDF() {
                 clonedDoc.documentElement.style.padding = '0';
                 clonedDoc.documentElement.style.fontSize = '16px';
 
-                // Ensure bottom block has proper top margin / gap when broken onto page 2
                 const clonedBottomBlock = clonedDoc.querySelector('.invoice-bottom-block');
                 if (clonedBottomBlock) {
-                    clonedBottomBlock.style.paddingTop = '35px';
+                    clonedBottomBlock.style.paddingTop = '15px';
                 }
             }
         },
-        pagebreak: { mode: ['css', 'legacy'], avoid: ['.invoice-bottom-block', 'tr', '.cat-row'] },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['.invoice-bottom-block', 'tr', '.cat-row', '.bank-info-box', '.sig-box'] },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    html2pdf().set(opt).from(invoice).save()
+    html2pdf().set(opt).from(invoice).toPdf().get('pdf').then(function (pdf) {
+        const totalPages = pdf.internal.getNumberOfPages();
+        if (totalPages === 2) {
+            const invoiceHeight = invoice.scrollHeight || invoice.offsetHeight;
+            if (invoiceHeight <= 1125) {
+                pdf.deletePage(2);
+            }
+        }
+    }).save()
         .then(() => {
             // PDF saved successfully
         })
@@ -2540,7 +2723,7 @@ function loadInvoice(event) {
                 document.getElementById("showCustomerSocial").checked = data.showCustomerSocial !== undefined ? data.showCustomerSocial : false;
             }
             if (document.getElementById("enableTax")) {
-                document.getElementById("enableTax").checked = data.enableTax !== undefined ? data.enableTax : false;
+                document.getElementById("enableTax").checked = data.enableTax !== undefined ? data.enableTax : true;
             }
 
             document.getElementById("socialItems").innerHTML = "";
