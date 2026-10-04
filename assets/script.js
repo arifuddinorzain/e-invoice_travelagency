@@ -175,6 +175,10 @@ function initCompanyDefault() {
     if (taxInput && (!taxInput.value || taxInput.value === "0" || taxInput.value === "")) {
         taxInput.value = "8";
     }
+    const payTermsEl = document.getElementById("paymentTerms");
+    if (payTermsEl && !payTermsEl.value) {
+        payTermsEl.value = "FULL PAYMENT";
+    }
 }
 
 const customerPresets = {
@@ -1348,7 +1352,16 @@ function getAvailablePackages() {
         return { company: companyKey, packages: dynamicPkgs, selectedTrip: tripName };
     }
 
-    return { company: "", packages: [], selectedTrip: "" };
+    // Fallback for custom company / non-preset customer:
+    // Provide adult, child with bed, child no bed, and infant package selections with default price 0
+    const genericPackages = [
+        { name: "GROUND PACKAGE (ADULT)", trip: "", price: 0 },
+        { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "", price: 0 },
+        { name: "GROUND PACKAGE (CHILD NO BED)", trip: "", price: 0 },
+        { name: "GROUND PACKAGE (INFANT)", trip: "", price: 0 }
+    ];
+
+    return { company: "", packages: genericPackages, selectedTrip: "" };
 }
 
 function updatePackagePresetUI() {
@@ -2108,16 +2121,16 @@ function updateInvoice() {
     // Package Includes
     const includes = [];
     if (document.getElementById("incMeals")?.checked) {
-        includes.push("Meals");
+        includes.push("Các bữa ăn (Meals)");
     }
     if (document.getElementById("incTransport")?.checked) {
-        includes.push("Transport");
+        includes.push("Vận chuyển (Transport)");
     }
     if (document.getElementById("incHotel")?.checked) {
-        includes.push("Hotel");
+        includes.push("Khách sạn (Hotel)");
     }
     if (document.getElementById("incTicket")?.checked) {
-        includes.push("Ticket Activity");
+        includes.push("Vé tham quan (Ticket Activity)");
     }
 
     const pIncludesEl = document.getElementById("p_tripIncludes");
@@ -2210,8 +2223,7 @@ function updateInvoice() {
     // 5. Totals & Payment Summary
     let taxEnabled = document.getElementById("enableTax") ? document.getElementById("enableTax").checked : false;
     let taxPct = taxEnabled ? (parseFloat(document.getElementById("tax").value) || 0) : 0;
-    let taxVal = subtotal * (taxPct / 100);
-    let grand = subtotal + taxVal;
+    let grand = subtotal; // Tax excluded from calculation
     let deposit = parseFloat(document.getElementById("depositPaid").value) || 0;
     let balance = grand - deposit;
 

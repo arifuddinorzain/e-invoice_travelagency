@@ -337,7 +337,8 @@
                             <label class="form-label small fw-bold text-secondary mb-1">Group Size</label>
                             <input type="text" id="groupSize" value="" class="form-control form-control-sm mb-2">
                             <label class="form-label small fw-bold text-secondary mb-1">Payment Terms</label>
-                            <input type="text" id="paymentTerms" value="" class="form-control form-control-sm mb-2">
+                            <input type="text" id="paymentTerms" value="FULL PAYMENT"
+                                class="form-control form-control-sm mb-2">
                             <label class="form-label small fw-bold text-secondary mb-1">Mode of Payment</label>
                             <select id="paymentMode" class="form-select form-select-sm">
                                 <option value="Bank Transfer" selected>Bank Transfer</option>
@@ -699,7 +700,7 @@
                                     </div>
                                     <div class="sum-row" id="p_taxRow" style="display:none;">
                                         <div class="sum-lbl-wrap">
-                                            <div class="sum-lbl-vi">Thuế (SST <span id="s_taxPct">0</span>%)</div>
+                                            <div class="sum-lbl-vi">Thuế (VAT <span id="s_taxPct">0</span>%)</div>
                                             <div class="sum-lbl-en">(Tax)</div>
                                         </div>
                                         <span id="s_taxVal">RM 0.00</span>
@@ -727,16 +728,20 @@
                                     <div class="bank-info-grid">
                                         <div class="bank-row"><span class="bank-lbl">Số TK <small
                                                     style="font-size: 8.5px; font-style: italic;">(Acc)</small>:</span>
-                                            <span class="bank-val fw-bold">3743168 (VND) / 50150357 (USD)</span></div>
+                                            <span class="bank-val fw-bold">3743168 (VND) / 50150357 (USD)</span>
+                                        </div>
                                         <div class="bank-row"><span class="bank-lbl">Ngân hàng <small
                                                     style="font-size: 8.5px; font-style: italic;">(Bank)</small>:</span>
-                                            <span class="bank-val">TMCP Á Châu (ACB)</span></div>
+                                            <span class="bank-val">TMCP Á Châu (ACB)</span>
+                                        </div>
                                         <div class="bank-row"><span class="bank-lbl">Tên TK <small
                                                     style="font-size: 8.5px; font-style: italic;">(Name)</small>:</span>
-                                            <span class="bank-val">SELAMATVN TOUR AND TRAVEL</span></div>
+                                            <span class="bank-val">SELAMATVN TOUR AND TRAVEL</span>
+                                        </div>
                                         <div class="bank-row"><span class="bank-lbl">Mã Swift <small
                                                     style="font-size: 8.5px; font-style: italic;">(Swift)</small>:</span>
-                                            <span class="bank-val fw-bold">ASCBVNVX</span></div>
+                                            <span class="bank-val fw-bold">ASCBVNVX</span>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -761,7 +766,7 @@
         </div>
     </div>
 
-    <script src="assets/script.js?v=65"></script>
+    <script src="assets/script.js?v=67"></script>
 </body>
 
 </html>
