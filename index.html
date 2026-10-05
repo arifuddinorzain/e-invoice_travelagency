@@ -14,6 +14,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -32,7 +33,7 @@
 
             <h4 class="mt-2 mb-3 border-bottom pb-2 d-flex align-items-center gap-2 fw-bold text-dark"><i
                     class="fa-solid fa-layer-group text-orange-500"></i> E-Invoice Travel</h4>
-            <div class="d-flex gap-2 mb-3">
+            <div class="d-flex gap-2 mb-2">
                 <button type="button" class="btn btn-primary btn-sm flex-fill fw-bold" onclick="saveInvoice()"><i
                         class="fa-solid fa-download"></i> Save</button>
                 <button type="button" class="btn btn-secondary btn-sm flex-fill fw-bold"
@@ -40,6 +41,21 @@
                     (file.inv)</button>
                 <input type="file" id="loadInvoiceFile" style="display:none" accept=".inv"
                     onchange="loadInvoice(event)">
+            </div>
+
+            <!-- Drag & Drop PDF / Invoice Box Region (Modern Minimalist Design) -->
+            <div id="quickDropZone" class="quick-dropzone mb-3"
+                onclick="document.getElementById('loadPdfFile').click()" title="Drag & drop PDF invoice here or click to browse">
+                <input type="file" id="loadPdfFile" style="display:none" accept=".pdf,application/pdf,.inv"
+                    onchange="loadPdfInvoice(event)">
+                <div class="dropzone-content">
+                    <svg class="dropzone-upload-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <span id="dropZoneText" class="dropzone-text">Drop files here or <span class="dropzone-highlight">click to browse</span></span>
+                </div>
             </div>
 
             <label class="form-label small fw-bold text-secondary mt-2 mb-1">Currency</label>
@@ -460,6 +476,7 @@
                         <div class="header-banner">
                             <div class="header-left">
                                 <img id="previewLogo" src="travellogo.jpeg" alt="Logo"
+                                    onerror="if(this.src!=='travellogo.jpeg'&&!this.src.endsWith('/travellogo.jpeg')&&!this.src.endsWith('travellogo.jpeg')){this.src='travellogo.jpeg';}else{this.style.display='none';}"
                                     style="max-width:230px; max-height:165px; object-fit:contain;">
                             </div>
                             <div class="header-center">
@@ -753,6 +770,7 @@
                                         (Approved By)</div>
                                     <div class="sig-img-container">
                                         <img id="previewSignature" src="signature.png" alt="Signature"
+                                            onerror="if(this.src!=='signature.png'&&!this.src.endsWith('/signature.png')&&!this.src.endsWith('signature.png')){this.src='signature.png';}else{this.style.display='none';}"
                                             style="display:block; max-height: 50px; max-width: 150px; margin: 4px auto; object-fit: contain;">
                                     </div>
                                     <div class="sig-name-bottom" id="p_sigNameBottom">N. VAN CHIEU</div>
@@ -766,7 +784,10 @@
         </div>
     </div>
 
-    <script src="assets/script.js?v=67"></script>
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="custom-toast-container"></div>
+
+    <script src="assets/script.js?v=69"></script>
 </body>
 
 </html>

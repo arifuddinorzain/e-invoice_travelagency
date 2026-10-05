@@ -937,3 +937,197 @@ body {
     border-color: #fed7aa !important;
     color: #7c2d12 !important;
 }
+
+/* Drag & Drop Quick Dropzone (Modern Minimalist Design) */
+.quick-dropzone {
+    background: #f8fafc;
+    border: 1.5px dashed #cbd5e1 !important;
+    border-radius: 10px;
+    padding: 10px 16px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    color: #1e293b;
+    user-select: none;
+    text-align: center;
+}
+
+.quick-dropzone .dropzone-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.quick-dropzone .dropzone-upload-icon {
+    width: 22px;
+    height: 22px;
+    color: #1e293b;
+    stroke: #1e293b;
+    flex-shrink: 0;
+    transition: transform 0.2s ease, color 0.2s ease, stroke 0.2s ease;
+}
+
+.quick-dropzone .dropzone-text {
+    font-size: 13px;
+    font-weight: 500;
+    color: #1e293b;
+    margin: 0;
+    letter-spacing: -0.1px;
+}
+
+.quick-dropzone .dropzone-highlight {
+    color: #0284c7;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-weight: 600;
+    transition: color 0.2s ease;
+}
+
+.quick-dropzone:hover {
+    background: #f0f9ff !important;
+    border-color: #0284c7 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(2, 132, 199, 0.12);
+}
+
+.quick-dropzone:hover .dropzone-upload-icon {
+    color: #0284c7;
+    stroke: #0284c7;
+    transform: translateY(-2px);
+}
+
+.quick-dropzone:hover .dropzone-highlight {
+    color: #0369a1;
+}
+
+/* When a file is being dragged into the window */
+.quick-dropzone.window-dragging {
+    background: #fff7ed !important;
+    border: 2px dashed #f97316 !important;
+    color: #ea580c !important;
+    box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.18), 0 8px 20px -4px rgba(239, 108, 0, 0.25);
+    animation: dropzonePulse 1.2s infinite ease-in-out;
+}
+
+.quick-dropzone.window-dragging .dropzone-upload-icon {
+    color: #ea580c !important;
+    stroke: #ea580c !important;
+    animation: bounceIcon 0.5s infinite alternate ease-in-out;
+}
+
+.quick-dropzone.window-dragging .dropzone-text,
+.quick-dropzone.window-dragging .dropzone-highlight {
+    color: #ea580c !important;
+    text-decoration: none;
+}
+
+/* When dragging directly over the box */
+.quick-dropzone.drag-over {
+    background: #ffedd5 !important;
+    border: 2px dashed #ea580c !important;
+    color: #9a3412 !important;
+    transform: scale(1.02) translateY(-1px) !important;
+    box-shadow: 0 0 0 6px rgba(234, 88, 12, 0.25), 0 12px 24px -4px rgba(234, 88, 12, 0.35) !important;
+}
+
+.quick-dropzone.drag-over .dropzone-upload-icon {
+    transform: scale(1.25) !important;
+    color: #c2410c !important;
+    stroke: #c2410c !important;
+    animation: bounceIconHover 0.35s infinite alternate ease-in-out !important;
+}
+
+.quick-dropzone.drag-over .dropzone-text,
+.quick-dropzone.drag-over .dropzone-highlight {
+    color: #9a3412 !important;
+}
+
+/* Keyframe animations */
+@keyframes dropzonePulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(239, 108, 0, 0.4), 0 4px 12px rgba(239, 108, 0, 0.15);
+        border-color: #f97316;
+    }
+    50% {
+        box-shadow: 0 0 0 5px rgba(239, 108, 0, 0.15), 0 8px 22px rgba(239, 108, 0, 0.28);
+        border-color: #ea580c;
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(239, 108, 0, 0.4), 0 4px 12px rgba(239, 108, 0, 0.15);
+        border-color: #f97316;
+    }
+}
+
+@keyframes bounceIcon {
+    0% { transform: translateY(0) scale(1.05); }
+    100% { transform: translateY(-4px) scale(1.15); }
+}
+
+@keyframes bounceIconHover {
+    0% { transform: translateY(0) scale(1.15); }
+    100% { transform: translateY(-6px) scale(1.3); }
+}
+
+@keyframes dropSuccessFlash {
+    0% { transform: scale(1); background: #dcfce7; border-color: #22c55e !important; }
+    50% { transform: scale(1.03); background: #bbf7d0; border-color: #16a34a !important; box-shadow: 0 0 0 8px rgba(34, 197, 94, 0.25); }
+    100% { transform: scale(1); background: #f0f3ff; border-color: #4f61f7 !important; }
+}
+
+.quick-dropzone.success-flash {
+    animation: dropSuccessFlash 0.7s ease-out;
+}
+
+/* Custom Floating Toast */
+.custom-toast-container {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 99999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    max-width: 380px;
+}
+
+.custom-toast {
+    pointer-events: auto;
+    background: #1e293b;
+    color: #ffffff;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 13.5px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    animation: toastSlideIn 0.3s ease forwards;
+    border-left: 4px solid #3b82f6;
+}
+
+.custom-toast.toast-success {
+    border-left-color: #22c55e;
+}
+
+.custom-toast.toast-error {
+    border-left-color: #ef4444;
+}
+
+.custom-toast.toast-info {
+    border-left-color: #3b82f6;
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100%) scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}

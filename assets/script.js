@@ -2515,7 +2515,19 @@ function downloadPDF() {
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
+    const invoicePayload = getInvoiceData();
+    const b64Data = btoa(unescape(encodeURIComponent(JSON.stringify(invoicePayload))));
+
     html2pdf().set(opt).from(invoice).toPdf().get('pdf').then(function (pdf) {
+        try {
+            pdf.setProperties({
+                keywords: 'EINVOICE_DATA:' + b64Data,
+                subject: 'EINVOICE_DATA:' + b64Data
+            });
+        } catch (e) {
+            console.warn("Could not set PDF metadata:", e);
+        }
+
         const totalPages = pdf.internal.getNumberOfPages();
         if (totalPages === 2) {
             const invoiceHeight = invoice.scrollHeight || invoice.offsetHeight;
@@ -2525,11 +2537,11 @@ function downloadPDF() {
         }
     }).save()
         .then(() => {
-            // PDF saved successfully
+            showToast("PDF invoice downloaded successfully!", "success");
         })
         .catch((err) => {
             console.error("PDF generation failed:", err);
-            alert("Ralat semasa menjana PDF. Sila cuba lagi.");
+            showToast("Error generating PDF. Please try again.", "error");
         })
         .finally(() => {
             setTimeout(() => {
@@ -2544,48 +2556,94 @@ function downloadPDF() {
         });
 }
 
-// Init
-initDefaultDates();
-initCompanyDefault();
-addRow('invoiceItems');
-addSocialRow();
-updateTripPresetUI();
-updatePackagePresetUI();
-updateInvoice();
-// SAVE & LOAD INVOICE DATA
-function saveInvoice() {
+// CONFIGURE PDF.JS WORKER
+if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// TOAST NOTIFICATIONS
+function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `custom-toast toast-${type}`;
+
+    let icon = '<i class="fa-solid fa-circle-info text-blue-400"></i>';
+    if (type === 'success') icon = '<i class="fa-solid fa-circle-check text-green-400"></i>';
+    if (type === 'error') icon = '<i class="fa-solid fa-circle-exclamation text-red-400"></i>';
+
+    toast.innerHTML = `
+        <div style="font-size: 18px;">${icon}</div>
+        <div class="flex-grow-1">${message}</div>
+        <button type="button" class="btn-close btn-close-white ms-2" style="font-size: 10px;" onclick="this.parentElement.remove()"></button>
+    `;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(100%)';
+        setTimeout(() => toast.remove(), 300);
+    }, 4500);
+}
+
+// GATHER COMPLETE INVOICE DATA OBJECT
+function getInvoiceData() {
     const logoImg = document.getElementById("previewLogo");
-    const logoData = (logoImg && logoImg.style.display !== "none" && logoImg.getAttribute("src")) ? logoImg.src : "";
+    let logoData = "";
+    if (logoImg && logoImg.style.display !== "none") {
+        const rawSrc = logoImg.getAttribute("src") || "";
+        const fullSrc = logoImg.src || "";
+        if (fullSrc.startsWith("data:") || rawSrc.startsWith("data:")) {
+            logoData = fullSrc.startsWith("data:") ? fullSrc : rawSrc;
+        } else if (rawSrc.includes("travellogo.jpeg") || fullSrc.includes("travellogo.jpeg")) {
+            logoData = "travellogo.jpeg";
+        } else {
+            logoData = rawSrc || fullSrc;
+        }
+    }
 
     const sigImg = document.getElementById("previewSignature");
-    const signatureData = (sigImg && sigImg.style.display !== "none" && sigImg.getAttribute("src")) ? sigImg.src : "";
+    let signatureData = "";
+    if (sigImg && sigImg.style.display !== "none") {
+        const rawSrc = sigImg.getAttribute("src") || "";
+        const fullSrc = sigImg.src || "";
+        if (fullSrc.startsWith("data:") || rawSrc.startsWith("data:")) {
+            signatureData = fullSrc.startsWith("data:") ? fullSrc : rawSrc;
+        } else if (rawSrc.includes("signature.png") || fullSrc.includes("signature.png")) {
+            signatureData = "signature.png";
+        } else {
+            signatureData = rawSrc || fullSrc;
+        }
+    }
 
     let data = {
-        currency: document.getElementById("currency").value,
+        currency: document.getElementById("currency") ? document.getElementById("currency").value : "RM",
         exchangeRate: currentAppliedRate,
-        companyName: document.getElementById("companyName").value,
-        companyAddress: document.getElementById("companyAddress").value,
-        companyPhone: document.getElementById("companyPhone").value,
-        companyEmail: document.getElementById("companyEmail").value,
+        companyName: document.getElementById("companyName") ? document.getElementById("companyName").value : "",
+        companyAddress: document.getElementById("companyAddress") ? document.getElementById("companyAddress").value : "",
+        companyPhone: document.getElementById("companyPhone") ? document.getElementById("companyPhone").value : "",
+        companyEmail: document.getElementById("companyEmail") ? document.getElementById("companyEmail").value : "",
         companyLicense: document.getElementById("companyLicense") ? document.getElementById("companyLicense").value : "",
-        companyWebsite: document.getElementById("companyWebsite").value,
+        companyWebsite: document.getElementById("companyWebsite") ? document.getElementById("companyWebsite").value : "",
         logoData: logoData,
         signatureData: signatureData,
-        invoiceNo: document.getElementById("invoiceNo").value,
-        invoiceDate: document.getElementById("invoiceDate").value,
-        dueDate: document.getElementById("dueDate").value,
-        customerName: document.getElementById("customerName").value,
-        customerAddress: document.getElementById("customerAddress").value,
-        customerSocial: document.getElementById("customerSocial").value,
-        tripName: document.getElementById("tripName").value,
-        tripDate: document.getElementById("tripDate").value,
-        tripPax: document.getElementById("tripPax").value,
-        tripConsultant: document.getElementById("tripConsultant").value,
-        groupSize: document.getElementById("groupSize").value,
-        paymentTerms: document.getElementById("paymentTerms").value,
-        paymentMode: document.getElementById("paymentMode").value,
-        depositPaid: document.getElementById("depositPaid").value,
-        tax: document.getElementById("tax").value,
+        invoiceNo: document.getElementById("invoiceNo") ? document.getElementById("invoiceNo").value : "",
+        invoiceDate: document.getElementById("invoiceDate") ? document.getElementById("invoiceDate").value : "",
+        dueDate: document.getElementById("dueDate") ? document.getElementById("dueDate").value : "",
+        customerName: document.getElementById("customerName") ? document.getElementById("customerName").value : "",
+        customerAddress: document.getElementById("customerAddress") ? document.getElementById("customerAddress").value : "",
+        customerSocial: document.getElementById("customerSocial") ? document.getElementById("customerSocial").value : "",
+        tripName: document.getElementById("tripName") ? document.getElementById("tripName").value : "",
+        tripDate: document.getElementById("tripDate") ? document.getElementById("tripDate").value : "",
+        tripPax: document.getElementById("tripPax") ? document.getElementById("tripPax").value : "",
+        tripConsultant: document.getElementById("tripConsultant") ? document.getElementById("tripConsultant").value : "",
+        groupSize: document.getElementById("groupSize") ? document.getElementById("groupSize").value : "",
+        paymentTerms: document.getElementById("paymentTerms") ? document.getElementById("paymentTerms").value : "FULL PAYMENT",
+        paymentMode: document.getElementById("paymentMode") ? document.getElementById("paymentMode").value : "ONLINE BANKING",
+        depositPaid: document.getElementById("depositPaid") ? document.getElementById("depositPaid").value : "",
+        tax: document.getElementById("tax") ? document.getElementById("tax").value : "8",
         enableTax: document.getElementById("enableTax") ? document.getElementById("enableTax").checked : false,
         approvedByName: document.getElementById("approvedByName") ? document.getElementById("approvedByName").value : "",
         showCompanyEmail: document.getElementById("showCompanyEmail") ? document.getElementById("showCompanyEmail").checked : false,
@@ -2604,28 +2662,48 @@ function saveInvoice() {
     };
 
     document.querySelectorAll("#socialItems .item-row").forEach(row => {
-        data.social.push({
-            platform: row.querySelector(".socialPlatform").value,
-            value: row.querySelector(".socialValue").value
-        });
+        const platformEl = row.querySelector(".socialPlatform");
+        const valueEl = row.querySelector(".socialValue");
+        if (platformEl && valueEl) {
+            data.social.push({
+                platform: platformEl.value,
+                value: valueEl.value
+            });
+        }
     });
 
     document.querySelectorAll("#invoiceItems .item-row").forEach(row => {
-        data.items.push({
-            desc: row.querySelector(".desc").value,
-            price: row.querySelector(".price").value,
-            qty: row.querySelector(".qty").value
-        });
+        const descEl = row.querySelector(".desc");
+        const priceEl = row.querySelector(".price");
+        const qtyEl = row.querySelector(".qty");
+        if (descEl && priceEl && qtyEl) {
+            data.items.push({
+                desc: descEl.value,
+                price: priceEl.value,
+                qty: qtyEl.value
+            });
+        }
     });
 
     document.querySelectorAll("#addonItems .item-row").forEach(row => {
-        data.addons.push({
-            desc: row.querySelector(".desc").value,
-            price: row.querySelector(".price").value,
-            qty: row.querySelector(".qty").value
-        });
+        const descEl = row.querySelector(".desc");
+        const priceEl = row.querySelector(".price");
+        const qtyEl = row.querySelector(".qty");
+        if (descEl && priceEl && qtyEl) {
+            data.addons.push({
+                desc: descEl.value,
+                price: priceEl.value,
+                qty: qtyEl.value
+            });
+        }
     });
 
+    return data;
+}
+
+// SAVE & EXPORT INVOICE (.INV)
+function saveInvoice() {
+    let data = getInvoiceData();
     let json = JSON.stringify(data, null, 2);
     let blob = new Blob([json], { type: "application/json" });
     let url = URL.createObjectURL(blob);
@@ -2646,186 +2724,598 @@ function saveInvoice() {
         filename = `invoice_${dateStr}`;
     }
 
-    // Sanitize any invalid filename characters
+    // Sanitize invalid filename characters
     filename = filename.replace(/[/\\?%*:|"<>]/g, '-').trim();
 
     a.href = url;
     a.download = `${filename}.inv`;
     a.click();
     URL.revokeObjectURL(url);
+    showToast("Draft saved as .inv file successfully!", "success");
 }
 
-function loadInvoice(event) {
-    let file = event.target.files[0];
-    if (!file) return;
+// POPULATE FORM WITH INVOICE DATA (REUSABLE FOR BOTH .INV AND .PDF)
+function populateFormWithInvoiceData(data) {
+    if (!data) return;
 
-    let reader = new FileReader();
-    reader.onload = function (e) {
-        try {
-            let data = JSON.parse(e.target.result);
+    let fields = [
+        "currency", "companyName", "companyAddress", "companyPhone", "companyEmail",
+        "companyLicense", "companyWebsite", "invoiceNo", "invoiceDate", "dueDate",
+        "customerName", "customerAddress", "customerSocial", "tripName", "tripDate",
+        "tripPax", "tripConsultant", "groupSize", "paymentTerms", "paymentMode",
+        "depositPaid", "tax", "approvedByName"
+    ];
 
-            let fields = ["currency", "companyName", "companyAddress", "companyPhone", "companyEmail", "companyLicense", "companyWebsite", "invoiceNo", "invoiceDate", "dueDate", "customerName", "customerAddress", "customerSocial", "tripName", "tripDate", "tripPax", "tripConsultant", "groupSize", "paymentTerms", "paymentMode", "depositPaid", "tax", "approvedByName"];
+    fields.forEach(id => {
+        if (data[id] !== undefined && document.getElementById(id)) {
+            document.getElementById(id).value = data[id];
+        }
+    });
 
-            fields.forEach(id => {
-                if (data[id] !== undefined && document.getElementById(id)) {
-                    document.getElementById(id).value = data[id];
-                }
-            });
-
-            if (data.logoData !== undefined) {
-                const logo = document.getElementById("previewLogo");
-                if (logo) {
-                    if (data.logoData) {
+    const logo = document.getElementById("previewLogo");
+    if (logo) {
+        if (data.logoData !== undefined) {
+            if (data.logoData) {
+                if (data.logoData.startsWith("data:") || data.logoData === "travellogo.jpeg") {
+                    logo.src = data.logoData;
+                } else if (data.logoData.includes("travellogo.jpeg")) {
+                    logo.src = "travellogo.jpeg";
+                } else if (data.logoData.startsWith("http://") || data.logoData.startsWith("https://") || data.logoData.startsWith("file://")) {
+                    if (data.logoData.endsWith("travellogo.jpeg")) {
+                        logo.src = "travellogo.jpeg";
+                    } else {
                         logo.src = data.logoData;
-                        logo.style.display = "block";
-                    } else {
-                        logo.src = "";
-                        logo.style.display = "none";
                     }
+                } else {
+                    logo.src = data.logoData;
                 }
+                logo.style.display = "block";
+            } else {
+                logo.src = "";
+                logo.style.display = "none";
             }
+        } else {
+            // When logoData is omitted in parsed visual PDFs, preserve default logo
+            logo.src = "travellogo.jpeg";
+            logo.style.display = "block";
+        }
+    }
 
-            if (data.signatureData !== undefined) {
-                const sig = document.getElementById("previewSignature");
-                if (sig) {
-                    if (data.signatureData) {
+    const sig = document.getElementById("previewSignature");
+    if (sig) {
+        if (data.signatureData !== undefined) {
+            if (data.signatureData) {
+                if (data.signatureData.startsWith("data:") || data.signatureData === "signature.png") {
+                    sig.src = data.signatureData;
+                } else if (data.signatureData.includes("signature.png")) {
+                    sig.src = "signature.png";
+                } else if (data.signatureData.startsWith("http://") || data.signatureData.startsWith("https://") || data.signatureData.startsWith("file://")) {
+                    if (data.signatureData.endsWith("signature.png")) {
+                        sig.src = "signature.png";
+                    } else {
                         sig.src = data.signatureData;
-                        sig.style.display = "block";
-                    } else {
-                        sig.src = "";
-                        sig.style.display = "none";
                     }
+                } else {
+                    sig.src = data.signatureData;
                 }
+                sig.style.display = "block";
+            } else {
+                sig.src = "";
+                sig.style.display = "none";
             }
+        } else {
+            // When signatureData is omitted, preserve default signature
+            sig.src = "signature.png";
+            sig.style.display = "block";
+        }
+    }
 
-            if (data.tripDate !== undefined) {
-                if (tripDatePicker && data.tripDate) {
-                    try {
-                        if (data.tripDate.includes(' to ')) {
-                            tripDatePicker.setDate(data.tripDate.split(' to '), false);
-                        } else {
-                            tripDatePicker.setDate(data.tripDate, false);
-                        }
-                    } catch (e) {
-                        if (document.getElementById("tripDate")) {
-                            document.getElementById("tripDate").value = data.tripDate;
-                        }
-                    }
-                } else if (document.getElementById("tripDate")) {
+    if (data.tripDate !== undefined) {
+        if (typeof tripDatePicker !== 'undefined' && tripDatePicker && data.tripDate) {
+            try {
+                if (data.tripDate.includes(' to ')) {
+                    tripDatePicker.setDate(data.tripDate.split(' to '), false);
+                } else {
+                    tripDatePicker.setDate(data.tripDate, false);
+                }
+            } catch (e) {
+                if (document.getElementById("tripDate")) {
                     document.getElementById("tripDate").value = data.tripDate;
                 }
             }
+        } else if (document.getElementById("tripDate")) {
+            document.getElementById("tripDate").value = data.tripDate;
+        }
+    }
 
-            if (data.companyName) {
-                const presetSelect = document.getElementById("companyPreset");
-                if (presetSelect) {
-                    const match = Object.keys(companyPresets).find(k => k.toLowerCase() === data.companyName.trim().toLowerCase());
-                    presetSelect.value = match || "";
+    if (data.companyName) {
+        const presetSelect = document.getElementById("companyPreset");
+        if (presetSelect) {
+            const match = Object.keys(companyPresets).find(k => k.toLowerCase() === data.companyName.trim().toLowerCase());
+            presetSelect.value = match || "";
+        }
+    }
+
+    if (data.customerName) {
+        const presetSelect = document.getElementById("customerPreset");
+        if (presetSelect) {
+            const match = Object.keys(customerPresets).find(k => k.toLowerCase() === data.customerName.trim().toLowerCase());
+            presetSelect.value = match || "";
+        }
+    }
+
+    if (data.currency) {
+        const curSelect = document.getElementById("currency");
+        if (curSelect) curSelect.value = data.currency;
+    }
+    if (data.exchangeRate !== undefined) {
+        currentAppliedRate = data.exchangeRate;
+    } else {
+        const curInfo = defaultCurrencyRates[data.currency || "RM"] || { rate: 1 };
+        currentAppliedRate = curInfo.rate;
+    }
+    const rateBox = document.getElementById("exchangeRateBox");
+    const rateInput = document.getElementById("customExchangeRate");
+    const rateTargetCode = document.getElementById("rateTargetCode");
+    const rateTargetSymbol = document.getElementById("rateTargetSymbol");
+    const rateInfoText = document.getElementById("rateInfoText");
+    const cur = data.currency || "RM";
+    const curInfo = defaultCurrencyRates[cur] || { rate: 1, code: cur, symbol: cur, noDecimals: false };
+    if (cur !== "RM") {
+        if (rateBox) rateBox.style.display = "block";
+        if (rateInput) rateInput.value = currentAppliedRate;
+        if (rateTargetCode) rateTargetCode.innerText = curInfo.code;
+        if (rateTargetSymbol) rateTargetSymbol.innerText = curInfo.symbol;
+        if (rateInfoText) rateInfoText.innerText = `Default fixed rate: 1 MYR = ${curInfo.rate.toLocaleString('en-US')} ${curInfo.symbol}`;
+    } else {
+        if (rateBox) rateBox.style.display = "none";
+    }
+
+    if (document.getElementById("showCompanyEmail")) {
+        document.getElementById("showCompanyEmail").checked = data.showCompanyEmail !== undefined ? data.showCompanyEmail : (!!data.companyEmail);
+    }
+    if (document.getElementById("showCompanyLicense")) {
+        document.getElementById("showCompanyLicense").checked = data.showCompanyLicense !== undefined ? data.showCompanyLicense : (!!data.companyLicense);
+    }
+    if (document.getElementById("showCompanyWebsite")) {
+        document.getElementById("showCompanyWebsite").checked = data.showCompanyWebsite !== undefined ? data.showCompanyWebsite : (!!data.companyWebsite);
+    }
+    if (document.getElementById("showCustomerSocial")) {
+        document.getElementById("showCustomerSocial").checked = data.showCustomerSocial !== undefined ? data.showCustomerSocial : (!!data.customerSocial);
+    }
+    if (document.getElementById("enableTax")) {
+        document.getElementById("enableTax").checked = data.enableTax !== undefined ? data.enableTax : true;
+    }
+    if (data.packageIncludes) {
+        if (document.getElementById("incMeals")) document.getElementById("incMeals").checked = !!data.packageIncludes.meals;
+        if (document.getElementById("incTransport")) document.getElementById("incTransport").checked = !!data.packageIncludes.transport;
+        if (document.getElementById("incHotel")) document.getElementById("incHotel").checked = !!data.packageIncludes.hotel;
+        if (document.getElementById("incTicket")) document.getElementById("incTicket").checked = !!data.packageIncludes.ticket;
+    }
+
+    // Reset rows
+    const socialContainer = document.getElementById("socialItems");
+    const itemContainer = document.getElementById("invoiceItems");
+    const addonContainer = document.getElementById("addonItems");
+
+    if (socialContainer) socialContainer.innerHTML = "";
+    if (itemContainer) itemContainer.innerHTML = "";
+    if (addonContainer) addonContainer.innerHTML = "";
+
+    if (data.social && Array.isArray(data.social) && data.social.length > 0) {
+        data.social.forEach(item => {
+            addSocialRow();
+            let rows = document.querySelectorAll("#socialItems .item-row");
+            let lastRow = rows[rows.length - 1];
+            if (lastRow) {
+                const p = lastRow.querySelector(".socialPlatform");
+                const v = lastRow.querySelector(".socialValue");
+                if (p) p.value = item.platform || "Facebook";
+                if (v) v.value = item.value || "";
+            }
+        });
+    }
+
+    if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+        data.items.forEach(item => {
+            addRow('invoiceItems');
+            let rows = document.querySelectorAll("#invoiceItems .item-row");
+            let lastRow = rows[rows.length - 1];
+            if (lastRow) {
+                const d = lastRow.querySelector(".desc");
+                const p = lastRow.querySelector(".price");
+                const q = lastRow.querySelector(".qty");
+                if (d) d.value = item.desc || "";
+                if (p) p.value = item.price || "";
+                if (q) q.value = item.qty !== undefined ? item.qty : "1";
+            }
+        });
+    } else {
+        addRow('invoiceItems');
+    }
+
+    if (data.addons && Array.isArray(data.addons) && data.addons.length > 0) {
+        data.addons.forEach(item => {
+            addRow('addonItems');
+            let rows = document.querySelectorAll("#addonItems .item-row");
+            let lastRow = rows[rows.length - 1];
+            if (lastRow) {
+                const d = lastRow.querySelector(".desc");
+                const p = lastRow.querySelector(".price");
+                const q = lastRow.querySelector(".qty");
+                if (d) d.value = item.desc || "";
+                if (p) p.value = item.price || "";
+                if (q) q.value = item.qty !== undefined ? item.qty : "1";
+            }
+        });
+    }
+
+    updateTripPresetUI();
+    updatePackagePresetUI();
+    updateInvoice();
+}
+
+// SMART PDF TEXT EXTRACTION ENGINE (PDF.JS)
+async function parseInvoiceTextFromPdf(pdfDoc) {
+    let fullText = "";
+    const numPages = pdfDoc.numPages;
+
+    for (let i = 1; i <= numPages; i++) {
+        const page = await pdfDoc.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(" ");
+        fullText += "\n" + pageText;
+    }
+
+    let extracted = {
+        currency: "RM",
+        companyName: "",
+        companyAddress: "",
+        companyPhone: "",
+        companyEmail: "",
+        companyLicense: "",
+        companyWebsite: "",
+        invoiceNo: "",
+        invoiceDate: "",
+        dueDate: "",
+        customerName: "",
+        customerAddress: "",
+        customerSocial: "",
+        tripName: "",
+        tripDate: "",
+        tripPax: "",
+        tripConsultant: "",
+        groupSize: "",
+        paymentTerms: "FULL PAYMENT",
+        paymentMode: "ONLINE BANKING",
+        depositPaid: "",
+        tax: "8",
+        enableTax: false,
+        approvedByName: "",
+        packageIncludes: { meals: false, transport: false, hotel: false, ticket: false },
+        social: [],
+        items: [],
+        addons: []
+    };
+
+    // Currency Detection
+    if (/\b(?:VND|₫)\b/i.test(fullText)) extracted.currency = "₫";
+    else if (/\b(?:USD|\$)\b/i.test(fullText) && !/SGD|AUD/i.test(fullText)) extracted.currency = "$";
+    else if (/\b(?:EUR|€)\b/i.test(fullText)) extracted.currency = "€";
+    else if (/\b(?:GBP|£)\b/i.test(fullText)) extracted.currency = "£";
+    else if (/\b(?:SGD|S\$)\b/i.test(fullText)) extracted.currency = "S$";
+    else if (/\b(?:AUD|A\$)\b/i.test(fullText)) extracted.currency = "A$";
+    else if (/\b(?:JPY|CNY|¥)\b/i.test(fullText)) extracted.currency = "¥";
+    else if (/\b(?:IDR|Rp)\b/i.test(fullText)) extracted.currency = "Rp";
+    else if (/\b(?:INR|₹)\b/i.test(fullText)) extracted.currency = "₹";
+    else if (/\b(?:THB|฿)\b/i.test(fullText)) extracted.currency = "฿";
+    else extracted.currency = "RM";
+
+    // Invoice Number
+    const invMatch = fullText.match(/(?:HÓA ĐƠN|INVOICE\s*(?:NO|NUMBER)?|HÓA ĐƠN SỐ|Số HĐ)\s*[:#.\s]*([A-Z0-9\-\/]+)/i) ||
+        fullText.match(/\b(INV[-\/]\d{4,}[-\/]?\d*)\b/i) ||
+        fullText.match(/\b(INV\d{3,})\b/i);
+    if (invMatch) extracted.invoiceNo = invMatch[1].trim();
+
+    // Dates (Invoice Date & Due Date)
+    const dateMatches = fullText.match(/\b(\d{4}[-\/]\d{1,2}[-\/]\d{1,2}|\d{1,2}[-\/]\d{1,2}[-\/]\d{4})\b/g);
+    if (dateMatches && dateMatches.length > 0) {
+        extracted.invoiceDate = formatDateForInput(dateMatches[0]);
+        if (dateMatches.length > 1) {
+            extracted.dueDate = formatDateForInput(dateMatches[1]);
+        }
+    }
+
+    function formatDateForInput(dateStr) {
+        if (!dateStr) return "";
+        let d = dateStr.trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+        let parts = d.split(/[-\/]/);
+        if (parts.length === 3) {
+            if (parts[0].length === 4) {
+                return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+            } else if (parts[2].length === 4) {
+                return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+        }
+        return d;
+    }
+
+    // Customer Name
+    const custMatch = fullText.match(/(?:Khách hàng|Customer|Bill To|Tên khách hàng|Kính gửi)\s*[:.\-]?\s*([^\n\r\t,]+?)(?=(?:Địa chỉ|Address|Số ĐT|Phone|Email|Ngày|Date|Thông tin|$))/i);
+    if (custMatch && custMatch[1].trim().length > 1) {
+        extracted.customerName = custMatch[1].trim().replace(/\s{2,}/g, ' ');
+    }
+
+    // Trip / Package Name
+    const tripMatch = fullText.match(/(?:Tên chuyến đi|Trip Name|Chương trình|Tour|Package|Gói tour)\s*[:.\-]?\s*([^\n\r\t,]+?)(?=(?:Thời gian|Trip Date|Date|Số lượng|Pax|Tư vấn|$))/i);
+    if (tripMatch && tripMatch[1].trim().length > 1) {
+        extracted.tripName = tripMatch[1].trim().replace(/\s{2,}/g, ' ');
+    }
+
+    // Trip Dates (e.g. 2026-10-10 to 2026-10-15)
+    const tripDateMatch = fullText.match(/(?:Thời gian|Trip Date|Travel Date|Dates)\s*[:.\-]?\s*(\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\s*(?:to|-)\s*\d{4}[-\/]\d{1,2}[-\/]\d{1,2})/i);
+    if (tripDateMatch) {
+        extracted.tripDate = tripDateMatch[1].trim();
+    }
+
+    // Pax Count
+    const paxMatch = fullText.match(/(?:Số lượng khách|Total Pax|Số khách|Pax)\s*[:.\-]?\s*(\d+)/i);
+    if (paxMatch) extracted.tripPax = paxMatch[1];
+
+    // Consultant
+    const consMatch = fullText.match(/(?:Tư vấn viên|Tour Consultant|Consultant|Sales)\s*[:.\-]?\s*([A-Za-z\s]+?)(?=(?:Quy mô|Group Size|Thanh toán|$))/i);
+    if (consMatch) extracted.tripConsultant = consMatch[1].trim();
+
+    // Group Size
+    const groupMatch = fullText.match(/(?:Quy mô đoàn|Group Size)\s*[:.\-]?\s*([A-Za-z0-9\s\-]+?)(?=(?:Thanh toán|Payment|$))/i);
+    if (groupMatch) extracted.groupSize = groupMatch[1].trim();
+
+    // Deposit Paid
+    const depositMatch = fullText.match(/(?:Đã đặt cọc|Deposit Paid|Deposit|Đã thanh toán)\s*[:.\-]?\s*([\d,]+(?:\.\d{2})?)/i);
+    if (depositMatch) {
+        extracted.depositPaid = formatPriceForInput(parseFloat(depositMatch[1].replace(/,/g, '')));
+    }
+
+    // Package Includes
+    if (/Bữa ăn|Meals/i.test(fullText)) extracted.packageIncludes.meals = true;
+    if (/Phương tiện|Xe đưa đón|Transport/i.test(fullText)) extracted.packageIncludes.transport = true;
+    if (/Khách sạn|Hotel/i.test(fullText)) extracted.packageIncludes.hotel = true;
+    if (/Vé tham quan|Vé máy bay|Ticket/i.test(fullText)) extracted.packageIncludes.ticket = true;
+
+    // Line items extraction
+    const itemPattern = /(?:(\d+)\s+)?([A-Za-z0-9\s\/\-\(\)]+?)\s+(\d+)\s+([\d,]+(?:\.\d{2})?)\s+([\d,]+(?:\.\d{2})?)/g;
+    let match;
+    const isVietnamCurrency = extracted.currency === "₫" || extracted.currency === "Rp" || extracted.currency === "¥";
+
+    function formatPriceForInput(num) {
+        if (isNaN(num)) return "0";
+        if (isVietnamCurrency) {
+            return Math.round(num).toLocaleString('en-US');
+        }
+        return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    while ((match = itemPattern.exec(fullText)) !== null) {
+        const desc = match[2].trim();
+        const qty = parseInt(match[3]) || 1;
+        const price = parseFloat(match[4].replace(/,/g, ''));
+
+        if (!/^(Description|STT|Tên hàng|Unit Price|Thành tiền|Amount|TỔNG|TOTAL|Subtotal|Tạm tính)/i.test(desc) && !isNaN(price) && !isNaN(qty)) {
+            const itemObj = { desc: desc, qty: qty, price: formatPriceForInput(price) };
+
+            if (/(ADULT|CHILD|INFANT|PAX|PACKAGE|TOUR|NGƯỜI LỚN|TRẺ EM|EM BÉ)/i.test(desc)) {
+                extracted.items.push(itemObj);
+            } else {
+                extracted.addons.push(itemObj);
+            }
+        }
+    }
+
+    // Fallback item detection
+    if (extracted.items.length === 0) {
+        const pkgTypes = ["ADULT", "CHILD WITH BED", "CHILD NO BED", "INFANT"];
+        pkgTypes.forEach(type => {
+            const re = new RegExp(`${type}[^\\d]*(\\d+)[^\\d]+([\\d,]+(?:\\.\\d{2})?)`, 'i');
+            const found = fullText.match(re);
+            if (found) {
+                extracted.items.push({
+                    desc: type,
+                    qty: parseInt(found[1]) || 1,
+                    price: formatPriceForInput(parseFloat(found[2].replace(/,/g, '')))
+                });
+            }
+        });
+    }
+
+    return extracted;
+}
+
+// HANDLE PDF EXTRACTION (METADATA + VISUAL PARSER FALLBACK)
+async function handlePdfFile(file) {
+    if (!file) return;
+
+    if (typeof pdfjsLib === 'undefined') {
+        showToast("PDF extraction library not loaded. Please check your internet connection.", "error");
+        return;
+    }
+
+    showToast("Extracting data from PDF invoice...", "info");
+
+    try {
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdfDoc = await loadingTask.promise;
+
+        // 1. Check embedded metadata first (100% loss-free exact recovery)
+        try {
+            const meta = await pdfDoc.getMetadata();
+            const keywords = meta?.info?.Keywords || meta?.info?.Subject || meta?.info?.Custom?.Keywords;
+            if (keywords && keywords.includes("EINVOICE_DATA:")) {
+                const rawB64 = keywords.substring(keywords.indexOf("EINVOICE_DATA:") + 14).trim();
+                const cleanB64 = rawB64.split(/[\s,;]+/)[0];
+                const jsonStr = decodeURIComponent(escape(atob(cleanB64)));
+                const data = JSON.parse(jsonStr);
+                if (data && (data.invoiceNo || data.items || data.companyName || data.customerName)) {
+                    populateFormWithInvoiceData(data);
+                    showToast("PDF invoice loaded with exact data! Ready to edit.", "success");
+                    return;
                 }
             }
+        } catch (metaErr) {
+            console.warn("Metadata recovery bypassed, falling back to smart text parser:", metaErr);
+        }
 
-            if (data.customerName) {
-                const presetSelect = document.getElementById("customerPreset");
-                if (presetSelect) {
-                    const match = Object.keys(customerPresets).find(k => k.toLowerCase() === data.customerName.trim().toLowerCase());
-                    presetSelect.value = match || "";
-                }
-            }
+        // 2. Parse visual text content from PDF
+        const parsedData = await parseInvoiceTextFromPdf(pdfDoc);
+        populateFormWithInvoiceData(parsedData);
+        showToast("PDF invoice extracted successfully! You can now review and edit the details.", "success");
+    } catch (err) {
+        console.error("PDF parsing error:", err);
+        showToast("Failed to parse PDF invoice: " + (err.message || "Unknown error"), "error");
+    }
+}
 
-            if (data.currency) {
-                document.getElementById("currency").value = data.currency;
-            }
-            if (data.exchangeRate !== undefined) {
-                currentAppliedRate = data.exchangeRate;
-            } else {
-                const curInfo = defaultCurrencyRates[data.currency || "RM"] || { rate: 1 };
-                currentAppliedRate = curInfo.rate;
-            }
-            const rateBox = document.getElementById("exchangeRateBox");
-            const rateInput = document.getElementById("customExchangeRate");
-            const rateTargetCode = document.getElementById("rateTargetCode");
-            const rateTargetSymbol = document.getElementById("rateTargetSymbol");
-            const rateInfoText = document.getElementById("rateInfoText");
-            const cur = data.currency || "RM";
-            const curInfo = defaultCurrencyRates[cur] || { rate: 1, code: cur, symbol: cur, noDecimals: false };
-            if (cur !== "RM") {
-                if (rateBox) rateBox.style.display = "block";
-                if (rateInput) rateInput.value = currentAppliedRate;
-                if (rateTargetCode) rateTargetCode.innerText = curInfo.code;
-                if (rateTargetSymbol) rateTargetSymbol.innerText = curInfo.symbol;
-                if (rateInfoText) rateInfoText.innerText = `Default fixed rate: 1 MYR = ${curInfo.rate.toLocaleString('en-US')} ${curInfo.symbol}`;
-            } else {
-                if (rateBox) rateBox.style.display = "none";
-            }
+// HANDLE INVOICE FILE ROUTING (.INV OR .PDF)
+function handleInvoiceFile(file) {
+    if (!file) return;
+    const fileName = file.name.toLowerCase();
 
-            if (document.getElementById("showCompanyEmail")) {
-                document.getElementById("showCompanyEmail").checked = data.showCompanyEmail !== undefined ? data.showCompanyEmail : false;
-            }
-            if (document.getElementById("showCompanyLicense")) {
-                document.getElementById("showCompanyLicense").checked = data.showCompanyLicense !== undefined ? data.showCompanyLicense : false;
-            }
-            if (document.getElementById("showCompanyWebsite")) {
-                document.getElementById("showCompanyWebsite").checked = data.showCompanyWebsite !== undefined ? data.showCompanyWebsite : false;
-            }
-            if (document.getElementById("showCustomerSocial")) {
-                document.getElementById("showCustomerSocial").checked = data.showCustomerSocial !== undefined ? data.showCustomerSocial : false;
-            }
-            if (document.getElementById("enableTax")) {
-                document.getElementById("enableTax").checked = data.enableTax !== undefined ? data.enableTax : true;
-            }
-            if (data.packageIncludes) {
-                if (document.getElementById("incMeals")) document.getElementById("incMeals").checked = !!data.packageIncludes.meals;
-                if (document.getElementById("incTransport")) document.getElementById("incTransport").checked = !!data.packageIncludes.transport;
-                if (document.getElementById("incHotel")) document.getElementById("incHotel").checked = !!data.packageIncludes.hotel;
-                if (document.getElementById("incTicket")) document.getElementById("incTicket").checked = !!data.packageIncludes.ticket;
-            }
+    if (fileName.endsWith('.inv') || file.type === 'application/json') {
+        handleInvFile(file);
+    } else if (fileName.endsWith('.pdf') || file.type === 'application/pdf') {
+        handlePdfFile(file);
+    } else {
+        showToast("Unsupported file type. Please upload a .pdf or .inv file.", "error");
+    }
+}
 
-            document.getElementById("socialItems").innerHTML = "";
-            document.getElementById("invoiceItems").innerHTML = "";
-            document.getElementById("addonItems").innerHTML = "";
-
-            if (data.social && data.social.length > 0) {
-                data.social.forEach(item => {
-                    addSocialRow();
-                    let rows = document.querySelectorAll("#socialItems .item-row");
-                    let lastRow = rows[rows.length - 1];
-                    lastRow.querySelector(".socialPlatform").value = item.platform;
-                    lastRow.querySelector(".socialValue").value = item.value;
-                });
-            }
-
-            if (data.items && data.items.length > 0) {
-                data.items.forEach(item => {
-                    addRow('invoiceItems');
-                    let rows = document.querySelectorAll("#invoiceItems .item-row");
-                    let lastRow = rows[rows.length - 1];
-                    lastRow.querySelector(".desc").value = item.desc;
-                    lastRow.querySelector(".price").value = item.price;
-                    lastRow.querySelector(".qty").value = item.qty;
-                });
-            }
-
-            if (data.addons && data.addons.length > 0) {
-                data.addons.forEach(item => {
-                    addRow('addonItems');
-                    let rows = document.querySelectorAll("#addonItems .item-row");
-                    let lastRow = rows[rows.length - 1];
-                    lastRow.querySelector(".desc").value = item.desc;
-                    lastRow.querySelector(".price").value = item.price;
-                    lastRow.querySelector(".qty").value = item.qty;
-                });
-            }
-
-            updateTripPresetUI();
-            updatePackagePresetUI();
-            updateInvoice();
-            event.target.value = "";
+function handleInvFile(file) {
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            populateFormWithInvoiceData(data);
+            showToast("Invoice (.inv) loaded successfully! Ready to edit.", "success");
         } catch (err) {
-            alert("Ralat: Fail tidak sah atau rosak.");
-            console.error(err);
+            console.error("Error parsing .inv file:", err);
+            showToast("Invalid or corrupted .inv file.", "error");
         }
     };
     reader.readAsText(file);
+}
+
+function loadInvoice(event) {
+    const file = event.target.files && event.target.files[0];
+    if (file) {
+        handleInvFile(file);
+        event.target.value = '';
+    }
+}
+
+function loadPdfInvoice(event) {
+    const file = event.target.files && event.target.files[0];
+    if (file) {
+        handleInvoiceFile(file);
+        event.target.value = '';
+    }
+}
+
+// INITIALIZE DRAG & DROP SUPPORT
+function initDragAndDrop() {
+    const quickDropZone = document.getElementById('quickDropZone');
+    const dropZoneText = document.getElementById('dropZoneText');
+    const defaultText = 'Drop files here or <span class="dropzone-highlight">click to browse</span>';
+    let dragCounter = 0;
+
+    window.addEventListener('dragenter', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter++;
+        if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) {
+            if (quickDropZone) {
+                quickDropZone.classList.add('window-dragging');
+                if (dropZoneText) dropZoneText.innerHTML = 'Drop your files here to import';
+            }
+        }
+    });
+
+    window.addEventListener('dragleave', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter--;
+        if (dragCounter <= 0) {
+            dragCounter = 0;
+            if (quickDropZone) {
+                quickDropZone.classList.remove('window-dragging', 'drag-over');
+                if (dropZoneText) dropZoneText.innerHTML = defaultText;
+            }
+        }
+    });
+
+    window.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    window.addEventListener('drop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter = 0;
+        if (quickDropZone) {
+            quickDropZone.classList.remove('window-dragging', 'drag-over');
+            quickDropZone.classList.add('success-flash');
+            setTimeout(() => quickDropZone.classList.remove('success-flash'), 700);
+            if (dropZoneText) dropZoneText.innerHTML = defaultText;
+        }
+
+        const files = e.dataTransfer ? e.dataTransfer.files : null;
+        if (files && files.length > 0) {
+            handleInvoiceFile(files[0]);
+        }
+    });
+
+    if (quickDropZone) {
+        quickDropZone.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            quickDropZone.classList.add('drag-over');
+            if (dropZoneText) dropZoneText.innerHTML = 'Release files now to edit';
+        });
+
+        quickDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            quickDropZone.classList.add('drag-over');
+            if (dropZoneText && dropZoneText.innerHTML !== 'Release files now to edit') {
+                dropZoneText.innerHTML = 'Release files now to edit';
+            }
+        });
+
+        quickDropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            quickDropZone.classList.remove('drag-over');
+            if (dropZoneText) {
+                dropZoneText.innerHTML = dragCounter > 0 ? 'Drop your files here to import' : defaultText;
+            }
+        });
+
+        quickDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dragCounter = 0;
+            quickDropZone.classList.remove('drag-over', 'window-dragging');
+            quickDropZone.classList.add('success-flash');
+            setTimeout(() => quickDropZone.classList.remove('success-flash'), 700);
+            if (dropZoneText) dropZoneText.innerHTML = defaultText;
+
+            const files = e.dataTransfer ? e.dataTransfer.files : null;
+            if (files && files.length > 0) {
+                handleInvoiceFile(files[0]);
+            }
+        });
+    }
 }
 
 function toggleAllAccordion(expand) {
@@ -2846,4 +3336,15 @@ function toggleAllAccordion(expand) {
         }
     });
 }
+
+// Init
+initDefaultDates();
+initCompanyDefault();
+addRow('invoiceItems');
+addSocialRow();
+updateTripPresetUI();
+updatePackagePresetUI();
+updateInvoice();
+initDragAndDrop();
+
 
