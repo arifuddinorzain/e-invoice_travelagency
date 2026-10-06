@@ -2516,14 +2516,19 @@ function downloadPDF() {
     };
 
     const invoicePayload = getInvoiceData();
-    const b64Data = btoa(unescape(encodeURIComponent(JSON.stringify(invoicePayload))));
+    const b64Data = encodeInvoiceDataB64(invoicePayload);
 
     html2pdf().set(opt).from(invoice).toPdf().get('pdf').then(function (pdf) {
         try {
-            pdf.setProperties({
-                keywords: 'EINVOICE_DATA:' + b64Data,
-                subject: 'EINVOICE_DATA:' + b64Data
-            });
+            if (b64Data) {
+                pdf.setProperties({
+                    title: 'EINVOICE_DATA:' + b64Data,
+                    subject: 'EINVOICE_DATA:' + b64Data,
+                    keywords: 'EINVOICE_DATA:' + b64Data,
+                    author: invoicePayload.companyName || 'E-Invoice Travel',
+                    creator: 'E-Invoice Travel System'
+                });
+            }
         } catch (e) {
             console.warn("Could not set PDF metadata:", e);
         }
@@ -2556,13 +2561,78 @@ function downloadPDF() {
         });
 }
 
-// CONFIGURE PDF.JS WORKER
+// SAFE UTF-8 BASE64 ENCODER / DECODER
+function encodeInvoiceDataB64(data) {
+    try {
+        const jsonStr = JSON.stringify(data);
+        return btoa(encodeURIComponent(jsonStr).replace(/%([0-9A-F]{2})/g, function (match, p1) {
+            return String.fromCharCode('0x' + p1);
+        }));
+    } catch (e) {
+        console.error("Failed to encode invoice data to Base64:", e);
+        return "";
+    }
+}
+
+function decodeInvoiceDataB64(rawB64) {
+    if (!rawB64) return null;
+    try {
+        const cleanB64 = rawB64.trim().replace(/[^A-Za-z0-9+/=]/g, '');
+        const jsonStr = decodeURIComponent(Array.prototype.map.call(atob(cleanB64), function (c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonStr);
+    } catch (e) {
+        try {
+            const firstChunk = rawB64.trim().split(/[\s,;()]+/)[0];
+            return JSON.parse(decodeURIComponent(escape(atob(firstChunk))));
+        } catch (e2) {
+            console.warn("Could not decode base64 invoice payload:", e2);
+            return null;
+        }
+    }
+}
+
+// DIRECT BINARY / TEXT STREAM EMBEDDED DATA SCANNER (RECOVERS METADATA EVEN IF PDF.JS WORKER FAILS)
+function extractRawEmbeddedData(arrayBuffer) {
+    try {
+        const uint8 = new Uint8Array(arrayBuffer);
+        let text = "";
+        try {
+            text = new TextDecoder("utf-8", { fatal: false }).decode(uint8);
+        } catch (e) {
+            text = String.fromCharCode.apply(null, uint8.subarray(0, Math.min(uint8.length, 1000000)));
+        }
+
+        const marker = "EINVOICE_DATA:";
+        let idx = text.indexOf(marker);
+        if (idx !== -1) {
+            const rawSub = text.substring(idx + marker.length);
+            const match = rawSub.match(/^([A-Za-z0-9+/=]+)/);
+            if (match && match[1]) {
+                const data = decodeInvoiceDataB64(match[1]);
+                if (data && (data.invoiceNo || data.items || data.companyName || data.customerName || data.tripName)) {
+                    return data;
+                }
+            }
+        }
+    } catch (err) {
+        console.warn("Direct buffer scan for embedded metadata failed:", err);
+    }
+    return null;
+}
+
+// CONFIGURE PDF.JS WORKER SAFELY
 if (typeof pdfjsLib !== 'undefined') {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    try {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    } catch (e) {
+        console.warn("PDF.js worker setup note:", e);
+    }
 }
 
 // TOAST NOTIFICATIONS
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', duration = 4500) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
 
@@ -2572,11 +2642,12 @@ function showToast(message, type = 'info') {
     let icon = '<i class="fa-solid fa-circle-info text-blue-400"></i>';
     if (type === 'success') icon = '<i class="fa-solid fa-circle-check text-green-400"></i>';
     if (type === 'error') icon = '<i class="fa-solid fa-circle-exclamation text-red-400"></i>';
+    if (type === 'warning') icon = '<i class="fa-solid fa-triangle-exclamation text-yellow-400"></i>';
 
     toast.innerHTML = `
-        <div style="font-size: 18px;">${icon}</div>
-        <div class="flex-grow-1">${message}</div>
-        <button type="button" class="btn-close btn-close-white ms-2" style="font-size: 10px;" onclick="this.parentElement.remove()"></button>
+        <div style="font-size: 18px; flex-shrink: 0;">${icon}</div>
+        <div class="flex-grow-1" style="line-height: 1.4;">${message}</div>
+        <button type="button" class="btn-close btn-close-white ms-2" style="font-size: 10px; flex-shrink: 0;" onclick="this.parentElement.remove()"></button>
     `;
 
     container.appendChild(toast);
@@ -2585,7 +2656,7 @@ function showToast(message, type = 'info') {
         toast.style.opacity = '0';
         toast.style.transform = 'translateX(100%)';
         setTimeout(() => toast.remove(), 300);
-    }, 4500);
+    }, duration);
 }
 
 // GATHER COMPLETE INVOICE DATA OBJECT
@@ -2956,15 +3027,16 @@ function populateFormWithInvoiceData(data) {
 }
 
 // SMART PDF TEXT EXTRACTION ENGINE (PDF.JS)
-async function parseInvoiceTextFromPdf(pdfDoc) {
-    let fullText = "";
-    const numPages = pdfDoc.numPages;
-
-    for (let i = 1; i <= numPages; i++) {
-        const page = await pdfDoc.getPage(i);
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items.map(item => item.str).join(" ");
-        fullText += "\n" + pageText;
+async function parseInvoiceTextFromPdf(pdfDoc, fullTextPreloaded = "") {
+    let fullText = fullTextPreloaded;
+    if (!fullText) {
+        const numPages = pdfDoc.numPages || 1;
+        for (let i = 1; i <= numPages; i++) {
+            const page = await pdfDoc.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(" ");
+            fullText += "\n" + pageText;
+        }
     }
 
     let extracted = {
@@ -3012,25 +3084,33 @@ async function parseInvoiceTextFromPdf(pdfDoc) {
     else extracted.currency = "RM";
 
     // Invoice Number
-    const invMatch = fullText.match(/(?:HÓA ĐƠN|INVOICE\s*(?:NO|NUMBER)?|HÓA ĐƠN SỐ|Số HĐ)\s*[:#.\s]*([A-Z0-9\-\/]+)/i) ||
-        fullText.match(/\b(INV[-\/]\d{4,}[-\/]?\d*)\b/i) ||
+    const invMatch = fullText.match(/(?:HÓA ĐƠN|INVOICE\s*(?:NO|NUMBER|#)?|HÓA ĐƠN SỐ|Số HĐ|Inv\s*#?)\s*[:#.\s]*([A-Z0-9\-\/]+)/i) ||
+        fullText.match(/\b(INV[-\/]\d{3,}[-\/]?\d*)\b/i) ||
         fullText.match(/\b(INV\d{3,})\b/i);
     if (invMatch) extracted.invoiceNo = invMatch[1].trim();
 
     // Dates (Invoice Date & Due Date)
-    const dateMatches = fullText.match(/\b(\d{4}[-\/]\d{1,2}[-\/]\d{1,2}|\d{1,2}[-\/]\d{1,2}[-\/]\d{4})\b/g);
-    if (dateMatches && dateMatches.length > 0) {
-        extracted.invoiceDate = formatDateForInput(dateMatches[0]);
-        if (dateMatches.length > 1) {
-            extracted.dueDate = formatDateForInput(dateMatches[1]);
-        }
-    }
+    const monthMap = {
+        'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04', 'may': '05', 'jun': '06',
+        'jul': '07', 'aug': '08', 'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12',
+        'january': '01', 'february': '02', 'march': '03', 'april': '04', 'june': '06',
+        'july': '07', 'august': '08', 'september': '09', 'october': '10', 'november': '11', 'december': '12'
+    };
 
     function formatDateForInput(dateStr) {
         if (!dateStr) return "";
         let d = dateStr.trim();
         if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-        let parts = d.split(/[-\/]/);
+
+        const textMonthMatch = d.match(/^(\d{1,2})[\s\-]+([A-Za-z]+)[\s\-]+(\d{4})$/);
+        if (textMonthMatch) {
+            const m = monthMap[textMonthMatch[2].toLowerCase()];
+            if (m) {
+                return `${textMonthMatch[3]}-${m}-${textMonthMatch[1].padStart(2, '0')}`;
+            }
+        }
+
+        let parts = d.split(/[-\/.]/);
         if (parts.length === 3) {
             if (parts[0].length === 4) {
                 return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
@@ -3041,47 +3121,55 @@ async function parseInvoiceTextFromPdf(pdfDoc) {
         return d;
     }
 
+    const dateMatches = fullText.match(/\b(\d{4}[-\/.]\d{1,2}[-\/.]\d{1,2}|\d{1,2}[-\/.]\d{1,2}[-\/.]\d{4}|\d{1,2}\s+[A-Za-z]+\s+\d{4})\b/g);
+    if (dateMatches && dateMatches.length > 0) {
+        extracted.invoiceDate = formatDateForInput(dateMatches[0]);
+        if (dateMatches.length > 1) {
+            extracted.dueDate = formatDateForInput(dateMatches[1]);
+        }
+    }
+
     // Customer Name
-    const custMatch = fullText.match(/(?:Khách hàng|Customer|Bill To|Tên khách hàng|Kính gửi)\s*[:.\-]?\s*([^\n\r\t,]+?)(?=(?:Địa chỉ|Address|Số ĐT|Phone|Email|Ngày|Date|Thông tin|$))/i);
+    const custMatch = fullText.match(/(?:Khách hàng|Customer|Bill To|Tên khách hàng|Kính gửi|Client|Attn|Nama Pelanggan)\s*[:.\-]?\s*([^\n\r\t,]+?)(?=(?:Địa chỉ|Address|Số ĐT|Phone|Email|Ngày|Date|Thông tin|$))/i);
     if (custMatch && custMatch[1].trim().length > 1) {
         extracted.customerName = custMatch[1].trim().replace(/\s{2,}/g, ' ');
     }
 
     // Trip / Package Name
-    const tripMatch = fullText.match(/(?:Tên chuyến đi|Trip Name|Chương trình|Tour|Package|Gói tour)\s*[:.\-]?\s*([^\n\r\t,]+?)(?=(?:Thời gian|Trip Date|Date|Số lượng|Pax|Tư vấn|$))/i);
+    const tripMatch = fullText.match(/(?:Tên chuyến đi|Trip Name|Chương trình|Tour|Package|Gói tour|Pakej|Destination)\s*[:.\-]?\s*([^\n\r\t,]+?)(?=(?:Thời gian|Trip Date|Travel Date|Date|Số lượng|Pax|Tư vấn|$))/i);
     if (tripMatch && tripMatch[1].trim().length > 1) {
         extracted.tripName = tripMatch[1].trim().replace(/\s{2,}/g, ' ');
     }
 
-    // Trip Dates (e.g. 2026-10-10 to 2026-10-15)
-    const tripDateMatch = fullText.match(/(?:Thời gian|Trip Date|Travel Date|Dates)\s*[:.\-]?\s*(\d{4}[-\/]\d{1,2}[-\/]\d{1,2}\s*(?:to|-)\s*\d{4}[-\/]\d{1,2}[-\/]\d{1,2})/i);
+    // Trip Dates (e.g. 2026-10-10 to 2026-10-15 or 10/10/2026 to 15/10/2026)
+    const tripDateMatch = fullText.match(/(?:Thời gian|Trip Date|Travel Date|Dates|Tarikh)\s*[:.\-]?\s*(\d{2,4}[-\/.]\d{1,2}[-\/.]\d{2,4}\s*(?:to|-)\s*\d{2,4}[-\/.]\d{1,2}[-\/.]\d{2,4})/i);
     if (tripDateMatch) {
         extracted.tripDate = tripDateMatch[1].trim();
     }
 
     // Pax Count
-    const paxMatch = fullText.match(/(?:Số lượng khách|Total Pax|Số khách|Pax)\s*[:.\-]?\s*(\d+)/i);
+    const paxMatch = fullText.match(/(?:Số lượng khách|Total Pax|Số khách|Pax|Bilangan)\s*[:.\-]?\s*(\d+)/i);
     if (paxMatch) extracted.tripPax = paxMatch[1];
 
     // Consultant
-    const consMatch = fullText.match(/(?:Tư vấn viên|Tour Consultant|Consultant|Sales)\s*[:.\-]?\s*([A-Za-z\s]+?)(?=(?:Quy mô|Group Size|Thanh toán|$))/i);
+    const consMatch = fullText.match(/(?:Tư vấn viên|Tour Consultant|Consultant|Sales|Perunding)\s*[:.\-]?\s*([A-Za-z\s]+?)(?=(?:Quy mô|Group Size|Thanh toán|$))/i);
     if (consMatch) extracted.tripConsultant = consMatch[1].trim();
 
     // Group Size
-    const groupMatch = fullText.match(/(?:Quy mô đoàn|Group Size)\s*[:.\-]?\s*([A-Za-z0-9\s\-]+?)(?=(?:Thanh toán|Payment|$))/i);
+    const groupMatch = fullText.match(/(?:Quy mô đoàn|Group Size|Saiz Kumpulan)\s*[:.\-]?\s*([A-Za-z0-9\s\-]+?)(?=(?:Thanh toán|Payment|$))/i);
     if (groupMatch) extracted.groupSize = groupMatch[1].trim();
 
     // Deposit Paid
-    const depositMatch = fullText.match(/(?:Đã đặt cọc|Deposit Paid|Deposit|Đã thanh toán)\s*[:.\-]?\s*([\d,]+(?:\.\d{2})?)/i);
+    const depositMatch = fullText.match(/(?:Đã đặt cọc|Deposit Paid|Deposit|Đã thanh toán|Bayaran Deposit)\s*[:.\-]?\s*([\d,]+(?:\.\d{2})?)/i);
     if (depositMatch) {
         extracted.depositPaid = formatPriceForInput(parseFloat(depositMatch[1].replace(/,/g, '')));
     }
 
     // Package Includes
-    if (/Bữa ăn|Meals/i.test(fullText)) extracted.packageIncludes.meals = true;
-    if (/Phương tiện|Xe đưa đón|Transport/i.test(fullText)) extracted.packageIncludes.transport = true;
-    if (/Khách sạn|Hotel/i.test(fullText)) extracted.packageIncludes.hotel = true;
-    if (/Vé tham quan|Vé máy bay|Ticket/i.test(fullText)) extracted.packageIncludes.ticket = true;
+    if (/Bữa ăn|Meals|Meal/i.test(fullText)) extracted.packageIncludes.meals = true;
+    if (/Phương tiện|Xe đưa đón|Transport|Flight|Tiket Penerbangan/i.test(fullText)) extracted.packageIncludes.transport = true;
+    if (/Khách sạn|Hotel|Accommodation/i.test(fullText)) extracted.packageIncludes.hotel = true;
+    if (/Vé tham quan|Vé máy bay|Ticket|Entrance/i.test(fullText)) extracted.packageIncludes.ticket = true;
 
     // Line items extraction
     const itemPattern = /(?:(\d+)\s+)?([A-Za-z0-9\s\/\-\(\)]+?)\s+(\d+)\s+([\d,]+(?:\.\d{2})?)\s+([\d,]+(?:\.\d{2})?)/g;
@@ -3101,10 +3189,10 @@ async function parseInvoiceTextFromPdf(pdfDoc) {
         const qty = parseInt(match[3]) || 1;
         const price = parseFloat(match[4].replace(/,/g, ''));
 
-        if (!/^(Description|STT|Tên hàng|Unit Price|Thành tiền|Amount|TỔNG|TOTAL|Subtotal|Tạm tính)/i.test(desc) && !isNaN(price) && !isNaN(qty)) {
+        if (!/^(Description|STT|Tên hàng|Unit Price|Thành tiền|Amount|TỔNG|TOTAL|Subtotal|Tạm tính|Item|Harga)/i.test(desc) && !isNaN(price) && !isNaN(qty)) {
             const itemObj = { desc: desc, qty: qty, price: formatPriceForInput(price) };
 
-            if (/(ADULT|CHILD|INFANT|PAX|PACKAGE|TOUR|NGƯỜI LỚN|TRẺ EM|EM BÉ)/i.test(desc)) {
+            if (/(ADULT|CHILD|INFANT|PAX|PACKAGE|TOUR|NGƯỜI LỚN|TRẺ EM|EM BÉ|DEWASA|KANAK)/i.test(desc)) {
                 extracted.items.push(itemObj);
             } else {
                 extracted.addons.push(itemObj);
@@ -3114,7 +3202,7 @@ async function parseInvoiceTextFromPdf(pdfDoc) {
 
     // Fallback item detection
     if (extracted.items.length === 0) {
-        const pkgTypes = ["ADULT", "CHILD WITH BED", "CHILD NO BED", "INFANT"];
+        const pkgTypes = ["ADULT", "CHILD WITH BED", "CHILD NO BED", "INFANT", "PAX", "PACKAGE", "TOUR"];
         pkgTypes.forEach(type => {
             const re = new RegExp(`${type}[^\\d]*(\\d+)[^\\d]+([\\d,]+(?:\\.\\d{2})?)`, 'i');
             const found = fullText.match(re);
@@ -3131,48 +3219,91 @@ async function parseInvoiceTextFromPdf(pdfDoc) {
     return extracted;
 }
 
-// HANDLE PDF EXTRACTION (METADATA + VISUAL PARSER FALLBACK)
+// HANDLE PDF EXTRACTION (DIRECT BINARY SCAN + PDF.JS METADATA + VISUAL PARSER FALLBACK)
 async function handlePdfFile(file) {
     if (!file) return;
 
-    if (typeof pdfjsLib === 'undefined') {
-        showToast("PDF extraction library not loaded. Please check your internet connection.", "error");
+    showToast("Analyzing and extracting PDF invoice...", "info", 2000);
+
+    let arrayBuffer;
+    try {
+        arrayBuffer = await file.arrayBuffer();
+    } catch (err) {
+        console.error("Failed to read file buffer:", err);
+        showToast("Could not read PDF file. Please select the file again.", "error");
         return;
     }
 
-    showToast("Extracting data from PDF invoice...", "info");
+    // STEP 1: Direct fast raw stream scanner (bypasses worker & network blocks completely)
+    const directData = extractRawEmbeddedData(arrayBuffer);
+    if (directData) {
+        populateFormWithInvoiceData(directData);
+        showToast("PDF invoice loaded with exact draft data! Ready to edit.", "success", 4000);
+        return;
+    }
+
+    // STEP 2: Verify PDF.js is available
+    if (typeof pdfjsLib === 'undefined') {
+        showToast("PDF extraction library (PDF.js) could not be loaded. Please check your internet connection or adblocker.", "error", 6000);
+        return;
+    }
 
     try {
-        const arrayBuffer = await file.arrayBuffer();
-        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const loadingTask = pdfjsLib.getDocument({
+            data: arrayBuffer,
+            cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
+            cMapPacked: true,
+            isEvalSupported: false
+        });
         const pdfDoc = await loadingTask.promise;
 
-        // 1. Check embedded metadata first (100% loss-free exact recovery)
+        // STEP 3: Check PDF.js metadata API
         try {
             const meta = await pdfDoc.getMetadata();
-            const keywords = meta?.info?.Keywords || meta?.info?.Subject || meta?.info?.Custom?.Keywords;
+            const keywords = meta?.info?.Keywords || meta?.info?.Subject || meta?.info?.Title || meta?.info?.Custom?.Keywords;
             if (keywords && keywords.includes("EINVOICE_DATA:")) {
                 const rawB64 = keywords.substring(keywords.indexOf("EINVOICE_DATA:") + 14).trim();
-                const cleanB64 = rawB64.split(/[\s,;]+/)[0];
-                const jsonStr = decodeURIComponent(escape(atob(cleanB64)));
-                const data = JSON.parse(jsonStr);
-                if (data && (data.invoiceNo || data.items || data.companyName || data.customerName)) {
+                const data = decodeInvoiceDataB64(rawB64);
+                if (data && (data.invoiceNo || data.items || data.companyName || data.customerName || data.tripName)) {
                     populateFormWithInvoiceData(data);
-                    showToast("PDF invoice loaded with exact data! Ready to edit.", "success");
+                    showToast("PDF invoice loaded with exact draft data! Ready to edit.", "success", 4000);
                     return;
                 }
             }
         } catch (metaErr) {
-            console.warn("Metadata recovery bypassed, falling back to smart text parser:", metaErr);
+            console.warn("Metadata recovery bypassed, proceeding to text extraction:", metaErr);
         }
 
-        // 2. Parse visual text content from PDF
-        const parsedData = await parseInvoiceTextFromPdf(pdfDoc);
-        populateFormWithInvoiceData(parsedData);
-        showToast("PDF invoice extracted successfully! You can now review and edit the details.", "success");
+        // STEP 4: Parse Visual Text Content from all pages
+        let fullText = "";
+        const numPages = pdfDoc.numPages || 1;
+        for (let i = 1; i <= numPages; i++) {
+            const page = await pdfDoc.getPage(i);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items.map(item => item.str).join(" ");
+            fullText += "\n" + pageText;
+        }
+
+        // Check if PDF has no selectable text layer (scanned photo / screenshot / raster-only PDF)
+        if (fullText.trim().length < 10) {
+            showToast("⚠️ This PDF is a scanned image or photo with no digital text layer. Please use the editable '.inv' draft file or enter details manually.", "warning", 7000);
+            return;
+        }
+
+        // STEP 5: Parse extracted text
+        const parsedData = await parseInvoiceTextFromPdf(pdfDoc, fullText);
+        const hasRecoveredFields = !!(parsedData.invoiceNo || parsedData.customerName || parsedData.tripName || (parsedData.items && parsedData.items.length > 0) || (parsedData.addons && parsedData.addons.length > 0));
+
+        if (hasRecoveredFields) {
+            populateFormWithInvoiceData(parsedData);
+            const totalItems = (parsedData.items ? parsedData.items.length : 0) + (parsedData.addons ? parsedData.addons.length : 0);
+            showToast(`PDF invoice extracted successfully! Found ${totalItems} item(s). Please review and adjust the details.`, "success", 5000);
+        } else {
+            showToast("Text was found in the PDF, but no standard invoice fields matched. Please fill in details manually or load the .inv draft.", "warning", 6000);
+        }
     } catch (err) {
         console.error("PDF parsing error:", err);
-        showToast("Failed to parse PDF invoice: " + (err.message || "Unknown error"), "error");
+        showToast("Could not parse PDF invoice: " + (err.message || "File might be corrupted or protected."), "error", 6000);
     }
 }
 
