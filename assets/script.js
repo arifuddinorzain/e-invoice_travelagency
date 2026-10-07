@@ -116,7 +116,7 @@ function resetDefaultExchangeRate() {
 const companyPresets = {
     "SELAMATVN TOUR AND TRAVEL": {
         name: "SELAMATVN TOUR AND TRAVEL",
-        address: "20/6 BINH CHANH WARD, BINH CHANH DISTRICT, HO CHI MINH VIETNAM",
+        address: "20/6 HUYNH VAN TRI STREET, HAMLET 6, BINH CHANH COMMUNE, HO CHI MINH CITY, VIETNAM",
         phone: "+84933743168",
         email: "selamattour.vn@gmail.com",
         license: "79-2734/2026/CDLQGVN-GP PLHQT",
@@ -911,132 +911,311 @@ function escapeHtml(str) {
         .replace(/'/g, "&#039;");
 }
 
+// Persistent Item Translation Cache (Local storage + In-Memory)
+let itemTranslationCache = {};
+try {
+    const savedCache = typeof localStorage !== 'undefined' ? localStorage.getItem("itemTranslationCache") : null;
+    if (savedCache) {
+        itemTranslationCache = JSON.parse(savedCache);
+    }
+} catch (e) {
+    itemTranslationCache = {};
+}
+
+function saveTranslationCache() {
+    try {
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem("itemTranslationCache", JSON.stringify(itemTranslationCache));
+        }
+    } catch (e) {}
+}
+
+const activeTranslationTimers = new Map();
+
+function translateToVietnamese(rawText) {
+    if (!rawText) return "";
+    let text = String(rawText).trim();
+    if (!text) return "";
+
+    const lowerKey = text.toLowerCase();
+
+    // 1. Check in-memory / local storage cache (case-insensitive key)
+    if (itemTranslationCache[lowerKey]) {
+        return itemTranslationCache[lowerKey];
+    }
+    if (itemTranslationCache[text]) {
+        return itemTranslationCache[text];
+    }
+
+    // 2. If string already contains Vietnamese tone marks/accents
+    if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/iu.test(text)) {
+        return text;
+    }
+
+    const clean = lowerKey.replace(/[^a-z0-9]/g, '');
+
+    // 3. High-Priority Tour Packages (Adult, Child Bed, Child No Bed, Infant)
+    const isPkgKeyword = clean.includes("groundpackage") || clean.includes("ground") || clean.includes("pakejground") || clean.includes("package") || clean.includes("pakej") || clean.includes("tour");
+
+    if (clean.includes("infant") || clean.includes("baby") || clean.includes("bayi") || clean.includes("embe") || clean.includes("tresosinh")) {
+        return "Tour trọn gói (Em bé)";
+    }
+    if (clean.includes("child") || clean.includes("kanak") || clean.includes("treem") || clean.includes("budak")) {
+        if (clean.includes("withbed") || clean.includes("adakatil") || clean.includes("berkatil") || clean.includes("cogiuong") || clean.includes("withbe") || (clean.includes("bed") && !clean.includes("nobed") && !clean.includes("withoutbed") && !clean.includes("tanpakatil"))) {
+            return "Tour trọn gói (Trẻ em có giường)";
+        }
+        if (clean.includes("nobed") || clean.includes("tanpakatil") || clean.includes("withoutbed") || clean.includes("tiadakatil") || clean.includes("khonggiuong")) {
+            return "Tour trọn gói (Trẻ em không giường)";
+        }
+        return "Tour trọn gói (Trẻ em)";
+    }
+    if (clean === "pakejdewasa" || clean === "packagedewasa" || clean === "adultpackage" || clean === "packageadult" || clean === "dewasa" || clean === "adult" || clean === "nguoilon" ||
+        (isPkgKeyword && (clean.includes("adult") || clean.includes("dewasa") || clean.includes("nguoilon")))) {
+        return "Tour trọn gói (Người lớn)";
+    }
+    if (clean === "groundpackage" || clean === "pakejground" || clean === "groundpkg" || clean === "ground") {
+        return "Tour trọn gói";
+    }
+
+    // 4. Comprehensive Compound & Token Mappings
+    const exactCompoundMap = [
+        // Attractions & Shows
+        [/\b(?:ticket\s+|entrance\s+)?sunset\s*s[ao]nato(?:\s*beach\s*club)?(?:\s*(?:entrance\s*)?ticket)?\b/gi, 'Vé tham quan Sunset Sanato'],
+        [/\bsunset\s*hills?\b/gi, 'Đồi Hoàng Hôn'],
+        [/\bsunrise\s*hills?\b/gi, 'Đồi Bình Minh'],
+        [/\bsolar\s*(?:panels?|energy|system)?\b/gi, 'Năng lượng mặt trời'],
+        [/\b(?:ticket\s+|entrance\s+)?kiss\s*bridge(?:\s*(?:entrance\s*)?ticket)?\b/gi, 'Vé tham quan Cầu Hôn (Kiss Bridge)'],
+        [/\bkiss\s*of\s*the\s*sea(?:\s*show|\s*ticket)?\b/gi, 'Vé Show Nụ Hôn Của Biển Cả'],
+        [/\b(?:ticket\s+)?(?:sun\s*world\s*)?ba\s*na\s*hills\s*(?:cable\s*car)?\s*\+\s*buffet(?:\s*lunch)?\b/gi, 'Vé Cáp treo Bà Nà Hills + Ăn trưa Buffet'],
+        [/\b(?:sun\s*world\s*)?ba\s*na\s*hills\s*(?:cable\s*car|ticket)\b/gi, 'Vé Cáp treo Sun World Bà Nà Hills'],
+        [/\bsun\s*world(?:\s*ticket)?\b/gi, 'Vé tham quan Sun World'],
+        [/\bgolden\s*bridge\b/gi, 'Cầu Vàng (Bà Nà Hills)'],
+        [/\bba\s*na\s*hills\b/gi, 'Bà Nà Hills'],
+        
+        [/\bfansipan\s*(?:cable\s*car(?:\s*ticket)?\s*\+\s*(?:peak|muong\s*hoa)\s*train|(?:peak|muong\s*hoa)\s*train\s*\+\s*cable\s*car)\b/gi, 'Vé Cáp treo Fansipan + Tàu hỏa leo núi'],
+        [/\bfansipan\s*cable\s*car(?:\s*ticket)?\b/gi, 'Vé Cáp treo Fansipan'],
+        [/\b(?:fansipan\s*)?(?:peak\s*train|muong\s*hoa\s*train)\b/gi, 'Vé Tàu hỏa Mường Hoa / Đỉnh Fansipan'],
+        [/\bcat\s*cat\s*village(?:\s*ticket|\s*entrance)?\b/gi, 'Vé tham quan Bản Cát Cát'],
+        [/\bmoana\s*sapa\b/gi, 'Điểm check-in Moana Sa Pa'],
+
+        [/\bvinwonders\s*(?:&|\+)\s*(?:vin\s*)?safari\b/gi, 'Combo Vé VinWonders & Vin Safari'],
+        [/\b(?:ticket\s+)?vinwonders(?:\s+ticket)?\b/gi, 'Vé tham quan VinWonders'],
+        [/\b(?:ticket\s+)?vin\s*safari(?:\s+ticket)?\b/gi, 'Vé tham quan Vin Safari'],
+        [/\bgrand\s*world\b/gi, 'Thành phố không ngủ Grand World'],
+
+        [/\bhon\s*thom\s*cable\s*car\s*(?:round\s*trip|2\s*ways?|two\s*ways?)\b/gi, 'Vé Cáp treo Hòn Thơm (Khứ hồi)'],
+        [/\bhon\s*thom\s*cable\s*car(?:\s*(?:one\s*way|1\s*way))?\b/gi, 'Vé Cáp treo Hòn Thơm'],
+        [/\b(?:ticket\s+)?cable\s*car\s*(?:round\s*trip|2\s*ways?|two\s*ways?)\b/gi, 'Vé Cáp treo (Khứ hồi)'],
+        [/\b(?:ticket\s+)?cable\s*car\s*(?:one\s*way|1\s*way)\b/gi, 'Vé Cáp treo (Một chiều)'],
+        [/\b(?:ticket\s+)?cable\s*car(?:\s+ticket)?\b/gi, 'Vé Cáp treo'],
+        [/\bmekong(?:\s*delta)?\s*(?:boat\s*tour|boat\s*trip|cruise|boat)\b/gi, 'Thuyền tham quan Đồng bằng Sông Cửu Long'],
+        [/\bhalong(?:\s*bay)?\s*(?:cruise|day\s*cruise|boat)\b/gi, 'Du thuyền tham quan Vịnh Hạ Long'],
+        [/\btrang\s*an(?:\s*boat\s*tour|\s*boat|\s*tour)?\b/gi, 'Thuyền tham quan Tràng An (Ninh Bình)'],
+        [/\btam\s*coc(?:\s*boat\s*tour|\s*boat|\s*tour)?\b/gi, 'Thuyền tham quan Tam Cốc (Ninh Bình)'],
+        [/\bcu\s*chi\s*tunnels?(?:\s*(?:entrance\s*)?ticket)?\b/gi, 'Vé tham quan Địa đạo Củ Chi'],
+        [/\b(?:saigon\s*)?water\s*bus(?:\s*ticket)?\b/gi, 'Vé Buýt đường sông Sài Gòn'],
+        [/\bwater\s*puppet(?:\s*show|\s*ticket)?\b/gi, 'Vé Múa rối nước'],
+        [/\bhoi\s*an\s*memories(?:\s*show|\s*ticket)?\b/gi, 'Vé Show Ký Ức Hội An'],
+        [/\bjeep\s*tour\s*(?:(?:at\s+)?(?:white\s*sand\s*dunes?|muine|mui\s*ne)\s*)+\b/gi, 'Tour xe Jeep Đồi Cát Trắng Mũi Né'],
+        [/\bjeep\s*tour\b/gi, 'Tour xe Jeep'],
+        [/\bwhite\s*sand\s*dunes?\b/gi, 'Đồi Cát Trắng (Mũi Né)'],
+        [/\bred\s*sand\s*dunes?\b/gi, 'Đồi Cát Bay (Mũi Né)'],
+        [/\batv\s*(?:quad\s*bike|bike)?\b/gi, 'Xe địa hình ATV'],
+        [/\bbamboo\s*(?:basket\s*)?boat|basket\s*boat\b/gi, 'Thuyền thúng Rừng dừa Bảy Mẫu'],
+        [/\bspeed\s*boat(?:\s*ticket)?\b/gi, 'Tàu cao tốc'],
+        [/\bmotorbike(?:\s*rental|\s*hire)?\b/gi, 'Thuê xe máy'],
+        [/\bdatanla\s*(?:waterfall|alpine\s*coaster)?\b/gi, 'Vé Thác Datanla / Máng trượt'],
+        [/\bisland\s*(?:hopping|tour)\b/gi, 'Tour tham quan đảo'],
+        [/\bsnorkeling|scuba\s*diving|diving\b/gi, 'Lặn ngắm san hô'],
+        [/\bmassage|body\s*massage|foot\s*massage|spa\b/gi, 'Dịch vụ Massage / Spa'],
+
+        // Transport & Vehicles
+        [/\b(?:private\s+)?(?:car|van|bus|coach)\s*16\s*(?:seater|seats|seat|chỗ)\s*(?:airport\s*transfer|airport\s*pickup|airport\s*dropoff)\b/gi, 'Xe riêng 16 chỗ đưa đón sân bay'],
+        [/\b(?:private\s+)?(?:car|van|bus|coach)\s*16\s*(?:seater|seats|seat|chỗ)\b/gi, 'Xe riêng 16 chỗ'],
+        [/\b16\s*(?:seater|seats|seat)\s*(?:car|van|bus|coach|private\s*car|private\s*van)\b/gi, 'Xe riêng 16 chỗ'],
+        [/\b(?:private\s+)?(?:car|van|bus|coach)\s*29\s*(?:seater|seats|seat|chỗ)\s*(?:airport\s*transfer|airport\s*pickup|airport\s*dropoff)\b/gi, 'Xe riêng 29 chỗ đưa đón sân bay'],
+        [/\b(?:private\s+)?(?:car|van|bus|coach)\s*29\s*(?:seater|seats|seat|chỗ)\b/gi, 'Xe riêng 29 chỗ'],
+        [/\b29\s*(?:seater|seats|seat)\s*(?:car|van|bus|coach)?\b/gi, 'Xe riêng 29 chỗ'],
+        [/\b(?:private\s+)?(?:car|van|bus|coach)\s*35\s*(?:seater|seats|seat|chỗ)\b/gi, 'Xe riêng 35 chỗ'],
+        [/\b35\s*(?:seater|seats|seat)\s*(?:car|van|bus|coach)?\b/gi, 'Xe riêng 35 chỗ'],
+        [/\b(?:private\s+)?(?:car|van|bus|coach)\s*45\s*(?:seater|seats|seat|chỗ)\b/gi, 'Xe riêng 45 chỗ'],
+        [/\b45\s*(?:seater|seats|seat)\s*(?:car|van|bus|coach)?\b/gi, 'Xe riêng 45 chỗ'],
+        [/\b(?:private\s+)?(?:car|van)\s*7\s*(?:seater|seats|seat|chỗ)\b/gi, 'Xe riêng 7 chỗ'],
+        [/\b7\s*(?:seater|seats|seat)\s*(?:car|van|private\s*car)?\b/gi, 'Xe riêng 7 chỗ'],
+        [/\b(?:private\s+)?(?:car|van)\s*4\s*(?:seater|seats|seat|chỗ)\b/gi, 'Xe riêng 4 chỗ'],
+        [/\b4\s*(?:seater|seats|seat)\s*(?:car|van|private\s*car)?\b/gi, 'Xe riêng 4 chỗ'],
+        [/\bprivate\s*(?:car|van|bus|coach)\b/gi, 'Xe riêng du lịch'],
+        [/\blimousine\s*(?:dcar|car|bus)?\b/gi, 'Xe Limousine Dcar cao cấp'],
+        [/\bsleeper\s*bus(?:\s*ticket)?\b/gi, 'Vé xe giường nằm'],
+        
+        [/\bairport\s*transfer\s*(?:\(?\s*)?(?:round\s*trip|2\s*ways?|two\s*ways?)(?:\s*\)?)\b/gi, 'Xe đưa đón sân bay (Khứ hồi)'],
+        [/\bairport\s*transfer\s*(?:\(?\s*)?(?:one\s*way|1\s*way)(?:\s*\)?)\b/gi, 'Xe đón/tiễn sân bay (Một chiều)'],
+        [/\bairport\s*transfer\b/gi, 'Xe đưa đón sân bay'],
+        [/\bairport\s*(?:pick\s*up|pickup)\s*(?:\(?\s*)?(?:one\s*way|1\s*way)?(?:\s*\)?)\b/gi, 'Xe đón sân bay (Một chiều)'],
+        [/\bairport\s*(?:drop\s*off|dropoff)\s*(?:\(?\s*)?(?:one\s*way|1\s*way)?(?:\s*\)?)\b/gi, 'Xe tiễn sân bay (Một chiều)'],
+        [/\b(?:airport|lapangan\s*terbang)\b/gi, 'Sân bay'],
+
+        // Tour Guides
+        [/\b(?:tour\s*)?guide\s*(?:\(\s*)?(?:english\s*speaking|speaking\s*english)(?:\s*\))?\b/gi, 'Hướng dẫn viên tiếng Anh'],
+        [/\benglish\s*speaking\s*(?:tour\s*)?guide\b/gi, 'Hướng dẫn viên tiếng Anh'],
+        [/\b(?:tour\s*)?guide\s*(?:\(\s*)?(?:malay\s*speaking|speaking\s*malay|bahasa)(?:\s*\))?\b/gi, 'Hướng dẫn viên tiếng Mã Lai'],
+        [/\b(?:malay\s*speaking\s*(?:tour\s*)?guide|bahasa\s*(?:speaking\s*)?(?:tour\s*)?guide)\b/gi, 'Hướng dẫn viên tiếng Mã Lai'],
+        [/\b(?:tour\s*)?guide\s*(?:\(\s*)?(?:indonesian\s*speaking|speaking\s*indonesian)(?:\s*\))?\b/gi, 'Hướng dẫn viên tiếng Indonesia'],
+        [/\bindonesian\s*speaking\s*(?:tour\s*)?guide\b/gi, 'Hướng dẫn viên tiếng Indonesia'],
+        [/\b(?:tour\s*)?guide\s*(?:\(\s*)?(?:chinese\s*speaking|speaking\s*chinese|mandarin)(?:\s*\))?\b/gi, 'Hướng dẫn viên tiếng Trung'],
+        [/\b(?:tour\s*guide|tourist\s*guide|pemandu\s*pelancong)\b/gi, 'Hướng dẫn viên du lịch'],
+        [/\bguide|pemandu\b/gi, 'Hướng dẫn viên'],
+
+        // Meals & Dining
+        [/\bhalal\s*lunch\s*(?:&|and|\+)\s*(?:halal\s*)?dinner\b/gi, 'Bữa trưa & tối Halal'],
+        [/\bhalal\s*lunch\b/gi, 'Bữa trưa Halal'],
+        [/\bhalal\s*dinner\b/gi, 'Bữa tối Halal'],
+        [/\bhalal\s*breakfast\b/gi, 'Bữa sáng Halal'],
+        [/\bhalal\s*(?:meals?|food)\b/gi, 'Suất ăn Halal'],
+        [/\bbuffet\s*lunch\b/gi, 'Ăn trưa Buffet'],
+        [/\bbuffet\s*dinner\b/gi, 'Ăn tối Buffet'],
+        [/\bbuffet\b/gi, 'Buffet'],
+        [/\bseafood\s*(?:dinner|lunch|meal)\b/gi, 'Bữa ăn hải sản'],
+        [/\bset\s*menu\s*(?:lunch|dinner|meal)?\b/gi, 'Suất ăn Set Menu'],
+        [/\bvegetarian\s*(?:meal|food)\b/gi, 'Suất ăn chay'],
+        [/\bwelcome\s*dinner\b/gi, 'Tiệc tối chào mừng'],
+        [/\bgala\s*dinner\b/gi, 'Tiệc Gala Dinner'],
+        [/\bcruise\s*dinner\b/gi, 'Ăn tối trên du thuyền'],
+        [/\bbreakfast\b/gi, 'Bữa sáng'],
+        [/\blunch\b/gi, 'Bữa trưa'],
+        [/\bdinner\b/gi, 'Bữa tối'],
+        [/\bmeals?|food\b/gi, 'Suất ăn'],
+
+        // Hotels & Rooms
+        [/\bsingle\s*supplement(?:\s*charge|\s*fee|\s*surcharge)?\b/gi, 'Phụ thu phòng đơn'],
+        [/\bsingle\s*room\b/gi, 'Phòng đơn'],
+        [/\bextra\s*bed(?:\s*charge|\s*surcharge)?\b/gi, 'Giường phụ (Extra Bed)'],
+        [/\bhotel\s*(\d)\s*star\b/gi, 'Khách sạn $1 sao'],
+        [/\b(\d)\s*star\s*hotel\b/gi, 'Khách sạn $1 sao'],
+        [/\broom\s*upgrade\b/gi, 'Nâng cấp phòng'],
+        [/\bearly\s*check[\s-]*in\b/gi, 'Nhận phòng sớm'],
+        [/\blate\s*check[\s-]*out\b/gi, 'Trả phòng muộn'],
+        [/\bhotel\b/gi, 'Khách sạn'],
+        [/\bresort\b/gi, 'Khu nghỉ dưỡng'],
+
+        // Extras & Amenities
+        [/\b(?:travel\s*)?insurance\b/gi, 'Bảo hiểm du lịch'],
+        [/\binsurans\b/gi, 'Bảo hiểm du lịch'],
+        [/\b(?:4g\s*)?sim\s*card(?:\s*4g)?\b/gi, 'Sim 4G du lịch'],
+        [/\besim(?:\s*data)?\b/gi, 'eSIM du lịch'],
+        [/\b(?:traditional\s*)?ao\s*dai\s*rental\b/gi, 'Thuê trang phục Áo Dài truyền thống'],
+        [/\bcostume\s*rental\b/gi, 'Thuê trang phục'],
+        [/\bphotographer(?:\s*service)?|cameraman\b/gi, 'Dịch vụ thợ chụp ảnh'],
+        [/\b(?:tipping|tips?)\s*(?:for\s*guide\s*(?:&|and)\s*driver)?\b/gi, 'Tiền Tip cho HDV & Lái xe'],
+        [/\bmineral\s*water|drinking\s*water\b/gi, 'Nước khoáng uống đóng chai'],
+        [/\bentrance\s*(?:ticket|fee|tickets)\b/gi, 'Vé vào cổng tham quan'],
+        [/\bflight\s*tickets?\b/gi, 'Vé máy bay'],
+        [/\btrain\s*tickets?\b/gi, 'Vé tàu hỏa'],
+        [/\btickets?\b/gi, 'Vé'],
+        [/\btransport(?:ation)?\b/gi, 'Phương tiện di chuyển'],
+        [/\bcar\b/gi, 'Xe ô tô'],
+        [/\bvan\b/gi, 'Xe Van'],
+        [/\bbus\b/gi, 'Xe buýt'],
+        [/\bboat|cruise\b/gi, 'Thuyền'],
+
+        // Word-by-word general tourism & nature tokens
+        [/\bsunset(?!\s*s[ao]nato)\b/gi, 'Hoàng hôn'],
+        [/\bsunrise\b/gi, 'Bình minh'],
+        [/\bhills?\b/gi, 'Đồi'],
+        [/\bmountains?\b/gi, 'Núi'],
+        [/\bbeach(?:es)?\b/gi, 'Bãi biển'],
+        [/\bislands?\b/gi, 'Đảo'],
+        [/\bwaterfalls?\b/gi, 'Thác nước'],
+        [/\bvalleys?\b/gi, 'Thung lũng'],
+        [/\bcaves?\b/gi, 'Hang động'],
+        [/\bgardens?\b/gi, 'Vườn'],
+        [/\bparks?\b/gi, 'Công viên'],
+        [/\bnight\b/gi, 'Ban đêm'],
+        [/\bmarkets?\b/gi, 'Chợ'],
+        [/\bcamping\b/gi, 'Cắm trại'],
+        [/\bkayak(?:ing)?\b/gi, 'Chèo thuyền Kayak'],
+        [/\brafting\b/gi, 'Chèo bè'],
+
+        // Malay phrases
+        [/\bmakan\s*tengahari\s*halal\b/gi, 'Bữa trưa Halal'],
+        [/\bmakan\s*malam\s*halal\b/gi, 'Bữa tối Halal'],
+        [/\bmakan\s*tengahari\b/gi, 'Bữa trưa'],
+        [/\bmakan\s*malam\b/gi, 'Bữa tối'],
+        [/\bmakanan\s*halal\b/gi, 'Suất ăn Halal'],
+        [/\bmakanan\b/gi, 'Suất ăn'],
+        [/\btiket\s*masuk\b/gi, 'Vé vào cổng'],
+        [/\btiket\s*kereta\s*kabel\b/gi, 'Vé Cáp treo'],
+        [/\btiket\b/gi, 'Vé'],
+        [/\bkereta\s*sewa|sewa\s*kereta\b/gi, 'Thuê xe ô tô'],
+        [/\bkereta\b/gi, 'Xe ô tô'],
+        [/\bbas\b/gi, 'Xe buýt'],
+        [/\bbilik\s*single\b/gi, 'Phòng đơn'],
+        [/\bkatil\s*tambahan\b/gi, 'Giường phụ (Extra Bed)']
+    ];
+
+    let t = text;
+    for (const [regex, replacement] of exactCompoundMap) {
+        t = t.replace(regex, replacement);
+    }
+
+    // Connectives
+    t = t.replace(/\b(?:in|at)\b/gi, 'tại');
+    t = t.replace(/\bfor\b/gi, 'cho');
+    t = t.replace(/\bwith\b/gi, 'có');
+
+    // Replace units, days, pax, and destinations
+    t = t.replace(/\b(\d+)\s*(?:d|h|days?|hari)\s*(\d+)\s*(?:n|m|nights?|malam)\b/gi, '$1N$2Đ');
+    t = t.replace(/\b(\d+)\s*days?\b/gi, '$1 ngày');
+    t = t.replace(/\b(\d+)\s*nights?\b/gi, '$1 đêm');
+    t = t.replace(/\b(\d+)\s*pax\b/gi, '$1 khách');
+    t = t.replace(/\b(\d+)\s*persons?\b/gi, '$1 người');
+
+    t = t.replace(/\bhcm\b/gi, 'HCM');
+    t = t.replace(/\bsaigon\b/gi, 'Sài Gòn');
+    t = t.replace(/\bhanoi\b/gi, 'Hà Nội');
+    t = t.replace(/\bdanang\b/gi, 'Đà Nẵng');
+    t = t.replace(/\bhoi\s*an\b/gi, 'Hội An');
+    t = t.replace(/\bdalat\b/gi, 'Đà Lạt');
+    t = t.replace(/\bmuine\b/gi, 'Mũi Né');
+    t = t.replace(/\bphu\s*quoc\b/gi, 'Phú Quốc');
+    t = t.replace(/\bhalong(?:\s*bay)?\b/gi, 'Hạ Long');
+    t = t.replace(/\bninh\s*binh\b/gi, 'Ninh Bình');
+    t = t.replace(/\bnha\s*trang\b/gi, 'Nha Trang');
+    t = t.replace(/\bsapa\b/gi, 'Sa Pa');
+    t = t.replace(/\bhue\b/gi, 'Huế');
+
+    const result = t.replace(/\s{2,}/g, ' ').trim();
+    itemTranslationCache[lowerKey] = result;
+    saveTranslationCache();
+    return result;
+}
+
 function getItemBilingualDetails(rawDesc) {
     if (!rawDesc) return { vi: "", en: "" };
     const text = String(rawDesc).trim();
     if (!text) return { vi: "", en: "" };
 
-    const lower = text.toLowerCase();
-    const clean = lower.replace(/[^a-z0-9]/g, '');
-
-    // 1. Ground Packages
-    const isGroundPkg = clean.includes("groundpackage") || clean.includes("ground") || clean.includes("pakejground") || clean.includes("package") || clean.includes("pakej");
-
-    // Infant / Baby
-    if ((isGroundPkg || clean.includes("infant") || clean.includes("baby") || clean.includes("bayi")) && (clean.includes("infant") || clean.includes("baby") || clean.includes("bayi") || clean.includes("embe") || clean.includes("tresosinh"))) {
+    // If user input already contains explicit Vietnamese before brackets, e.g. "Vé cáp treo (Cable Car)"
+    const bracketMatch = text.match(/^([^(]+)\s*\(([^)]+)\)$/);
+    if (bracketMatch && /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/iu.test(bracketMatch[1])) {
         return {
-            vi: "TOUR TRỌN GÓI (EM BÉ)",
-            en: text.toUpperCase().includes("GROUND PACKAGE") ? text : "GROUND PACKAGE (INFANT)"
+            vi: bracketMatch[1].trim(),
+            en: bracketMatch[2].trim()
         };
     }
 
-    // Child With Bed
-    if ((isGroundPkg || clean.includes("child") || clean.includes("kanak") || clean.includes("treem")) && (clean.includes("withbed") || clean.includes("adakatil") || clean.includes("berkatil") || clean.includes("cogiuong") || (clean.includes("bed") && !clean.includes("nobed") && !clean.includes("tanpakatil") && !clean.includes("withoutbed")))) {
-        return {
-            vi: "TOUR TRỌN GÓI (TRẺ EM CÓ GIƯỜNG)",
-            en: text.toUpperCase().includes("GROUND PACKAGE") ? text : "GROUND PACKAGE (CHILD WITH BED)"
-        };
-    }
-
-    // Child No Bed
-    if ((isGroundPkg || clean.includes("child") || clean.includes("kanak") || clean.includes("treem")) && (clean.includes("nobed") || clean.includes("tanpakatil") || clean.includes("withoutbed") || clean.includes("tiadakatil") || clean.includes("khonggiuong"))) {
-        return {
-            vi: "TOUR TRỌN GÓI (TRẺ EM KHÔNG GIƯỜNG)",
-            en: text.toUpperCase().includes("GROUND PACKAGE") ? text : "GROUND PACKAGE (CHILD NO BED)"
-        };
-    }
-
-    // Child General
-    if (clean.includes("child") || clean.includes("kanak") || clean.includes("treem")) {
-        return {
-            vi: "TOUR TRỌN GÓI (TRẺ EM)",
-            en: text
-        };
-    }
-
-    // Adult Ground Package
-    if (isGroundPkg && (clean.includes("adult") || clean.includes("dewasa") || clean.includes("nguoilon") || clean.includes("groundpackage") || clean.includes("ground"))) {
-        return {
-            vi: "TOUR TRỌN GÓI (NGƯỜI LỚN)",
-            en: text.toUpperCase().includes("GROUND PACKAGE") ? text : "GROUND PACKAGE (ADULT)"
-        };
-    }
-
-    if (clean === "adult" || clean === "dewasa") {
-        return {
-            vi: "TOUR TRỌN GÓI (NGƯỜI LỚN)",
-            en: text
-        };
-    }
-
-    // 2. Add-ons & Tour Attractions
-    if (clean.includes("vinwonders")) {
-        return {
-            vi: "Vé tham quan VinWonders",
-            en: text
-        };
-    }
-    if (clean.includes("vinsafari") || (clean.includes("vin") && clean.includes("safari")) || clean.includes("safari")) {
-        return {
-            vi: "Vé tham quan Vin Safari",
-            en: text
-        };
-    }
-    if (clean.includes("cablecar") || clean.includes("captreo")) {
-        return {
-            vi: "Vé Cáp treo",
-            en: text
-        };
-    }
-    if (clean.includes("airporttransfer") || (clean.includes("airport") && clean.includes("transfer"))) {
-        const isReturn = clean.includes("return") || clean.includes("2way") || clean.includes("khuhoi");
-        return {
-            vi: isReturn ? "Xe đưa đón sân bay (Khứ hồi)" : "Xe đưa đón sân bay",
-            en: text
-        };
-    }
-    if (clean.includes("insurance") || clean.includes("insurans")) {
-        return {
-            vi: "Bảo hiểm du lịch",
-            en: text
-        };
-    }
-    if (clean.includes("luggage") || clean.includes("bagasi")) {
-        return {
-            vi: "Hành lý ký gửi",
-            en: text
-        };
-    }
-    if (clean.includes("tourguide") || clean.includes("guide") || clean.includes("pemandupelancong")) {
-        return {
-            vi: "Hướng dẫn viên du lịch",
-            en: text
-        };
-    }
-    if (clean.includes("tipping") || clean.includes("tip")) {
-        return {
-            vi: "Tiền Tip (Tipping)",
-            en: text
-        };
-    }
-    if (clean.includes("hotel") || clean.includes("singlesupplement") || clean.includes("room")) {
-        return {
-            vi: "Phụ thu phòng / Khách sạn",
-            en: text
-        };
-    }
-
-    // Check if string already contains Vietnamese accents
-    if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(text)) {
+    // Check if input is already pure Vietnamese
+    if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/iu.test(text)) {
         return {
             vi: text,
             en: ""
         };
     }
 
+    const viTrans = translateToVietnamese(text);
     return {
-        vi: text,
-        en: ""
+        vi: viTrans || text,
+        en: (viTrans && viTrans.toLowerCase() !== text.toLowerCase()) ? text : ""
     };
 }
 
@@ -1053,6 +1232,48 @@ function formatItemDescriptionHtml(desc) {
 
     return `<div class="item-desc-vi">${escapeHtml(details.vi || desc)}</div>`;
 }
+
+function triggerAutoTranslation(text, immediate = false) {
+    if (!text || !text.trim()) return;
+    const cleanText = text.trim();
+    if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/iu.test(cleanText)) return;
+
+    const queryText = cleanText.toLowerCase();
+    if (itemTranslationCache[queryText] && itemTranslationCache[queryText] !== cleanText) return;
+
+    if (activeTranslationTimers.has(queryText)) {
+        clearTimeout(activeTranslationTimers.get(queryText));
+    }
+
+    const fetchTranslation = async () => {
+        try {
+            const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(queryText)}&langpair=en|vi`;
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json();
+                const trans = data?.responseData?.translatedText;
+                if (trans && trans.toLowerCase() !== queryText && !trans.includes("MYMEMORY WARNING")) {
+                    itemTranslationCache[queryText] = trans;
+                    itemTranslationCache[cleanText] = trans;
+                    saveTranslationCache();
+                    updateInvoice();
+                }
+            }
+        } catch (e) {
+            // Silently fallback to offline translation
+        } finally {
+            activeTranslationTimers.delete(queryText);
+        }
+    };
+
+    if (immediate) {
+        fetchTranslation();
+    } else {
+        const timer = setTimeout(fetchTranslation, 300);
+        activeTranslationTimers.set(queryText, timer);
+    }
+}
+
 
 function getPackageType(desc) {
     const s = (desc || "").toLowerCase();
@@ -1553,6 +1774,7 @@ function onPackageDescInput(inputEl) {
             }
         }
     }
+    triggerAutoTranslation(inputEl.value);
     updateInvoice();
 }
 
@@ -1589,7 +1811,23 @@ function onPackageQtyChange(qtyInput) {
 const addonPresets = [
     { name: "Ticket VinWonders", price: 170.00 },
     { name: "Vin Safari", price: 130.00 },
-    { name: "Ticket Cable Car", price: 130.00 }
+    { name: "Ticket Cable Car", price: 130.00 },
+    { name: "Sunset Sanato", price: 43.00 },
+    { name: "Kiss Bridge", price: 45.00 },
+    { name: "Kiss of the Sea Show", price: 110.00 },
+    { name: "Sun World Ba Na Hills + Buffet", price: 180.00 },
+    { name: "Fansipan Cable Car + Train", price: 160.00 },
+    { name: "Bamboo Basket Boat", price: 35.00 },
+    { name: "Jeep Tour Mui Ne", price: 80.00 },
+    { name: "Saigon Water Bus", price: 20.00 },
+    { name: "Airport Transfer (One Way)", price: 90.00 },
+    { name: "Airport Transfer (Round Trip)", price: 170.00 },
+    { name: "Sim 4G Card", price: 35.00 },
+    { name: "Halal Lunch / Dinner", price: 45.00 },
+    { name: "English Speaking Tour Guide", price: 150.00 },
+    { name: "Malay Speaking Tour Guide", price: 180.00 },
+    { name: "Single Supplement Room", price: 120.00 },
+    { name: "Extra Bed", price: 80.00 }
 ];
 
 function showAddonDropdown(inputEl) {
@@ -1682,6 +1920,7 @@ function onAddonDescInput(inputEl) {
             }
         }
     }
+    triggerAutoTranslation(inputEl.value);
     updateInvoice();
 }
 
@@ -1848,7 +2087,7 @@ function addRow(tableId, defaultDesc = "", defaultPrice = 0, defaultQty = null) 
     let descInputHtml = "";
     if (isPackage) {
         descInputHtml = `
-        <div class="position-relative mb-3">
+        <div class="position-relative mb-2">
             <input type="text" 
                 class="desc form-control form-control-sm" 
                 placeholder="Select or type package name..." 
@@ -1864,7 +2103,7 @@ function addRow(tableId, defaultDesc = "", defaultPrice = 0, defaultQty = null) 
         `;
     } else {
         descInputHtml = `
-        <div class="position-relative mb-3">
+        <div class="position-relative mb-2">
             <input type="text" 
                 class="desc form-control form-control-sm" 
                 placeholder="Select or type add-on / service (e.g. Ticket VinWonders)..." 
@@ -1888,8 +2127,7 @@ function addRow(tableId, defaultDesc = "", defaultPrice = 0, defaultQty = null) 
                 <button type="button" onclick="removeRow(this)" class="btn btn-sm btn-link text-danger p-0 text-decoration-none" title="Remove Item"><i class="fa-solid fa-trash-can"></i></button>
             </div>
             ${descInputHtml}
-            
-            <div class="row g-2 align-items-end">
+            <div class="row g-2 align-items-end mt-1">
                 <div class="col">
                     <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Unit Price</label>
                     <input type="number" class="price form-control form-control-sm" value="${initialPrice}" min="0" step="0.01" oninput="${isPackage ? 'onPackagePriceInput(this); ' : ''}updateInvoice()">
@@ -2166,9 +2404,9 @@ function updateInvoice() {
     if (pkgRows.length > 0) {
         html += `<tr class="cat-row"><td colspan="5"><i class="fa-solid fa-suitcase"></i> <span class="cat-lbl-vi">GÓI TOUR</span> <span class="cat-lbl-en">(PACKAGE)</span></td></tr>`;
         pkgRows.forEach(row => {
-            let desc = row.querySelector(".desc").value;
-            let price = parseFloat(row.querySelector(".price").value) || 0;
-            let qty = parseInt(row.querySelector(".qty").value) || 0;
+            let desc = row.querySelector(".desc")?.value || "";
+            let price = parseFloat(row.querySelector(".price")?.value) || 0;
+            let qty = parseInt(row.querySelector(".qty")?.value) || 0;
 
             let focCount = (getPackageType(desc) === "adult") ? getFocCount(currentCust, currentTrip, qty) : 0;
             let isFoc = focCount > 0 && price > 0;
@@ -2203,9 +2441,9 @@ function updateInvoice() {
     if (addonRows.length > 0) {
         html += `<tr class="cat-row"><td colspan="5"><i class="fa-solid fa-bag-shopping"></i> <span class="cat-lbl-vi">DỊCH VỤ BỔ SUNG</span> <span class="cat-lbl-en">(ADD-ON / SERVICE)</span></td></tr>`;
         addonRows.forEach(row => {
-            let desc = row.querySelector(".desc").value;
-            let price = parseFloat(row.querySelector(".price").value) || 0;
-            let qty = parseInt(row.querySelector(".qty").value) || 0;
+            let desc = row.querySelector(".desc")?.value || "";
+            let price = parseFloat(row.querySelector(".price")?.value) || 0;
+            let qty = parseInt(row.querySelector(".qty")?.value) || 0;
             let total = price * qty;
             subtotal += total;
             row.querySelector(".lineTotal").innerText = curInfo.noDecimals ? Math.round(total).toLocaleString('en-US') : total.toFixed(2);
@@ -2801,8 +3039,10 @@ function getInvoiceData() {
         const priceEl = row.querySelector(".price");
         const qtyEl = row.querySelector(".qty");
         if (descEl && priceEl && qtyEl) {
+            const details = getItemBilingualDetails(descEl.value);
             data.items.push({
                 desc: descEl.value,
+                viDesc: (details.vi && details.vi.toLowerCase() !== descEl.value.toLowerCase()) ? details.vi : "",
                 price: priceEl.value,
                 qty: qtyEl.value
             });
@@ -2814,8 +3054,10 @@ function getInvoiceData() {
         const priceEl = row.querySelector(".price");
         const qtyEl = row.querySelector(".qty");
         if (descEl && priceEl && qtyEl) {
+            const details = getItemBilingualDetails(descEl.value);
             data.addons.push({
                 desc: descEl.value,
+                viDesc: (details.vi && details.vi.toLowerCase() !== descEl.value.toLowerCase()) ? details.vi : "",
                 price: priceEl.value,
                 qty: qtyEl.value
             });
@@ -3049,7 +3291,16 @@ function populateFormWithInvoiceData(data) {
                 const d = lastRow.querySelector(".desc");
                 const p = lastRow.querySelector(".price");
                 const q = lastRow.querySelector(".qty");
-                if (d) d.value = item.desc || "";
+                if (d) {
+                    d.value = item.desc || "";
+                    if (item.viDesc && item.desc) {
+                        itemTranslationCache[item.desc.toLowerCase()] = item.viDesc;
+                        itemTranslationCache[item.desc] = item.viDesc;
+                        saveTranslationCache();
+                    } else if (item.desc) {
+                        triggerAutoTranslation(item.desc, true);
+                    }
+                }
                 if (p) p.value = item.price || "";
                 if (q) q.value = item.qty !== undefined ? item.qty : "1";
             }
@@ -3067,7 +3318,16 @@ function populateFormWithInvoiceData(data) {
                 const d = lastRow.querySelector(".desc");
                 const p = lastRow.querySelector(".price");
                 const q = lastRow.querySelector(".qty");
-                if (d) d.value = item.desc || "";
+                if (d) {
+                    d.value = item.desc || "";
+                    if (item.viDesc && item.desc) {
+                        itemTranslationCache[item.desc.toLowerCase()] = item.viDesc;
+                        itemTranslationCache[item.desc] = item.viDesc;
+                        saveTranslationCache();
+                    } else if (item.desc) {
+                        triggerAutoTranslation(item.desc, true);
+                    }
+                }
                 if (p) p.value = item.price || "";
                 if (q) q.value = item.qty !== undefined ? item.qty : "1";
             }
