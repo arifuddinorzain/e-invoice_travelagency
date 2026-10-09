@@ -2697,6 +2697,11 @@ function downloadPDF() {
     const invoice = document.getElementById("invoiceToDownload");
     const invNumber = document.getElementById("invoiceNo")?.value.trim() || "invoice";
 
+    // Count package item rows and add-on rows to determine single vs multi-page
+    const pkgRowCount = document.querySelectorAll("#invoiceItems .item-row").length;
+    const addonRowCount = document.querySelectorAll("#addonItems .item-row").length;
+    const isSinglePageInvoice = (pkgRowCount + addonRowCount) <= 7;
+
     const opt = {
         margin: 0,
         filename: `${invNumber}.pdf`,
@@ -2712,28 +2717,38 @@ function downloadPDF() {
                 if (scaleWrapper) {
                     scaleWrapper.classList.remove('preview-scale');
                     scaleWrapper.style.transform = 'none';
+                    scaleWrapper.style.webkitTransform = 'none';
+                    scaleWrapper.style.margin = '0';
+                    scaleWrapper.style.padding = '0';
+                    scaleWrapper.style.display = 'block';
+                }
+
+                const previewSection = clonedDoc.querySelector('.preview-section');
+                if (previewSection) {
+                    previewSection.style.display = 'block';
+                    previewSection.style.margin = '0';
+                    previewSection.style.padding = '0';
+                    previewSection.style.overflow = 'visible';
+                }
+
+                const pdfArea = clonedDoc.getElementById('pdfArea');
+                if (pdfArea) {
+                    pdfArea.style.display = 'block';
+                    pdfArea.style.margin = '0';
+                    pdfArea.style.padding = '0';
                 }
 
                 // Force exact dimensions on invoice
                 const clonedInvoice = clonedDoc.getElementById('invoiceToDownload');
                 if (clonedInvoice) {
                     clonedInvoice.style.width = '794px';
+                    clonedInvoice.style.minWidth = '794px';
                     clonedInvoice.style.maxWidth = '794px';
-                    clonedInvoice.style.margin = '0';
+                    clonedInvoice.style.margin = '0 auto';
                     clonedInvoice.style.padding = '0';
                     clonedInvoice.style.boxShadow = 'none';
                     clonedInvoice.style.border = 'none';
-
-                    // If single page content, ensure it does not overflow 1122px (standard A4 height)
-                    const actualHeight = clonedInvoice.scrollHeight || clonedInvoice.offsetHeight;
-                    if (actualHeight <= 1125) {
-                        clonedInvoice.style.height = '1120px';
-                        clonedInvoice.style.maxHeight = '1122px';
-                        clonedInvoice.style.overflow = 'hidden';
-                    } else {
-                        clonedInvoice.style.height = 'auto';
-                        clonedInvoice.style.minHeight = 'auto';
-                    }
+                    clonedInvoice.style.boxSizing = 'border-box';
                 }
 
                 // Ensure body/html have no extra spacing
@@ -2742,14 +2757,9 @@ function downloadPDF() {
                 clonedDoc.documentElement.style.margin = '0';
                 clonedDoc.documentElement.style.padding = '0';
                 clonedDoc.documentElement.style.fontSize = '16px';
-
-                const clonedBottomBlock = clonedDoc.querySelector('.invoice-bottom-block');
-                if (clonedBottomBlock) {
-                    clonedBottomBlock.style.paddingTop = '15px';
-                }
             }
         },
-        pagebreak: { mode: ['css', 'legacy'], avoid: ['.invoice-bottom-block', 'tr', '.cat-row', '.bank-info-box', '.sig-box'] },
+        pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.cat-row', '.bank-info-box', '.sig-box'] },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
@@ -2772,11 +2782,8 @@ function downloadPDF() {
         }
 
         const totalPages = pdf.internal.getNumberOfPages();
-        if (totalPages === 2) {
-            const invoiceHeight = invoice.scrollHeight || invoice.offsetHeight;
-            if (invoiceHeight <= 1125) {
-                pdf.deletePage(2);
-            }
+        if (totalPages === 2 && isSinglePageInvoice) {
+            pdf.deletePage(2);
         }
     }).save()
         .then(() => {
@@ -3098,6 +3105,43 @@ function saveInvoice() {
     a.click();
     URL.revokeObjectURL(url);
     showToast("Draft saved as .inv file successfully!", "success");
+}
+
+// SAVE DIRECTLY TO LARAVEL + NEON CLOUD DATABASE
+async function saveToNeonCloud() {
+    const data = getInvoiceData();
+    if (!data.invoiceNo && !data.customerName) {
+        showToast("Please fill in at least an Invoice No or Customer Name before saving.", "warning");
+        return;
+    }
+
+    showToast("Connecting to Laravel & Neon DB...", "info", 2000);
+
+    const apiBase = "http://127.0.0.1:8001/api";
+
+    try {
+        const response = await fetch(`${apiBase}/invoices`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.success) {
+            showToast(`✅ Invoice ${data.invoiceNo || ''} saved to Neon Cloud DB!`, "success", 5000);
+        } else if (result.status === 'pending_configuration' || response.status === 500) {
+            showToast(`⚠️ Laravel API is online, but Neon DB connection is pending in backend/.env`, "warning", 6000);
+        } else {
+            showToast(`❌ Error saving invoice: ${result.message || 'Unknown error'}`, "error", 5000);
+        }
+    } catch (err) {
+        console.error("Laravel Neon API error:", err);
+        showToast("Could not connect to Laravel backend at http://127.0.0.1:8001. Please make sure the Laravel server is running.", "error", 6000);
+    }
 }
 
 // POPULATE FORM WITH INVOICE DATA (REUSABLE FOR BOTH .INV AND .PDF)
@@ -3793,5 +3837,21 @@ updateTripPresetUI();
 updatePackagePresetUI();
 updateInvoice();
 initDragAndDrop();
+
+// Auto-load preloaded draft from Analytics page if present
+try {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('loadPreloaded') === 'true') {
+        const preloaded = localStorage.getItem('preload_draft_invoice');
+        if (preloaded) {
+            const parsedData = JSON.parse(preloaded);
+            populateFormWithInvoiceData(parsedData);
+            showToast("Invoice loaded from Analytics Dashboard!", "success", 4000);
+            localStorage.removeItem('preload_draft_invoice');
+        }
+    }
+} catch (e) {
+    console.warn("Preload error:", e);
+}
 
 
