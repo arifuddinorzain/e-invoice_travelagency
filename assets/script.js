@@ -3124,6 +3124,89 @@ function getApiBaseUrl() {
     return null;
 }
 
+// API Configuration Modal Logic
+function openApiConfigModal() {
+    const modal = document.getElementById('apiConfigModal');
+    const input = document.getElementById('cfgApiBaseUrl');
+    const statusBox = document.getElementById('apiTestStatus');
+    if (!modal || !input) return;
+
+    input.value = localStorage.getItem('custom_cloud_api') || '';
+    if (statusBox) {
+        statusBox.className = 'p-2 mb-3 rounded small d-none';
+        statusBox.innerHTML = '';
+    }
+    modal.classList.add('show');
+}
+
+function closeApiConfigModal() {
+    const modal = document.getElementById('apiConfigModal');
+    if (modal) modal.classList.remove('show');
+}
+
+async function testApiConnection() {
+    const input = document.getElementById('cfgApiBaseUrl');
+    const statusBox = document.getElementById('apiTestStatus');
+    if (!input || !statusBox) return;
+
+    let targetUrl = (input.value || '').trim();
+    if (!targetUrl) {
+        const defaultBase = getApiBaseUrl();
+        if (!defaultBase) {
+            statusBox.className = 'p-2 mb-3 rounded small bg-warning text-dark';
+            statusBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> Please enter your live Cloud API URL (e.g., <code>https://your-api.onrender.com/api</code>).';
+            return;
+        }
+        targetUrl = defaultBase;
+    }
+    targetUrl = targetUrl.replace(/\/+$/, '');
+
+    statusBox.className = 'p-2 mb-3 rounded small bg-info text-white';
+    statusBox.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Testing connection to backend & Neon DB...';
+
+    try {
+        const res = await fetch(`${targetUrl}/test-db`, { headers: { 'Accept': 'application/json' } });
+        const data = await res.json();
+        if (res.ok && data.database === 'connected') {
+            statusBox.className = 'p-2 mb-3 rounded small bg-success text-white';
+            statusBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> Connected successfully! Neon DB has ${data.invoices_count || 0} invoices.`;
+        } else {
+            statusBox.className = 'p-2 mb-3 rounded small bg-warning text-dark';
+            statusBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i> Server online, but database returned: ${data.message || 'Check database URL'}`;
+        }
+    } catch (err) {
+        statusBox.className = 'p-2 mb-3 rounded small bg-danger text-white';
+        statusBox.innerHTML = `<i class="fa-solid fa-circle-xmark me-1"></i> Could not connect to <code>${targetUrl}</code>. Ensure the server is live with CORS enabled.`;
+    }
+}
+
+function saveApiConfig() {
+    const input = document.getElementById('cfgApiBaseUrl');
+    if (!input) return;
+
+    const url = (input.value || '').trim().replace(/\/+$/, '');
+    if (url) {
+        localStorage.setItem('custom_cloud_api', url);
+        showToast(`Connected to Cloud API: ${url}`, "success", 4000);
+    } else {
+        localStorage.removeItem('custom_cloud_api');
+        showToast("Switched back to default environment detection.", "info", 3000);
+    }
+    closeApiConfigModal();
+}
+
+function resetApiConfig() {
+    localStorage.removeItem('custom_cloud_api');
+    const input = document.getElementById('cfgApiBaseUrl');
+    const statusBox = document.getElementById('apiTestStatus');
+    if (input) input.value = '';
+    if (statusBox) {
+        statusBox.className = 'p-2 mb-3 rounded small bg-secondary text-white';
+        statusBox.innerHTML = '<i class="fa-solid fa-info-circle me-1"></i> Reset to default local / client mode.';
+    }
+    showToast("API URL reset to default.", "info", 3000);
+}
+
 // SAVE DIRECTLY TO LARAVEL + NEON CLOUD DATABASE OR LOCAL STORAGE
 async function saveToNeonCloud() {
     const data = getInvoiceData();
