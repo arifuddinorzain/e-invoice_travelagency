@@ -3107,7 +3107,24 @@ function saveInvoice() {
     showToast("Draft saved as .inv file successfully!", "success");
 }
 
-// SAVE DIRECTLY TO LARAVEL + NEON CLOUD DATABASE
+// Dynamic Environment & API Base Resolver
+function getApiBaseUrl() {
+    const customEndpoint = (localStorage.getItem('custom_cloud_api') || '').trim();
+    if (customEndpoint) {
+        return customEndpoint.replace(/\/+$/, '');
+    }
+
+    const host = window.location.hostname;
+    const isLocal = !host || host === 'localhost' || host === '127.0.0.1' || host === '::1' || window.location.protocol === 'file:';
+    if (isLocal) {
+        return 'http://127.0.0.1:8001/api';
+    }
+
+    // On live static host (e.g. GitHub Pages) with no cloud backend URL configured
+    return null;
+}
+
+// SAVE DIRECTLY TO LARAVEL + NEON CLOUD DATABASE OR LOCAL STORAGE
 async function saveToNeonCloud() {
     const data = getInvoiceData();
     if (!data.invoiceNo && !data.customerName) {
@@ -3115,9 +3132,19 @@ async function saveToNeonCloud() {
         return;
     }
 
-    showToast("Connecting to Laravel & Neon DB...", "info", 2000);
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) {
+        // Fallback: save to localStorage cache so work is never lost on live static demo
+        try {
+            localStorage.setItem('savedInvoiceDraft', JSON.stringify(data));
+            showToast(`Saved invoice ${data.invoiceNo || ''} locally to browser storage!`, "success", 4000);
+        } catch (e) {
+            showToast("Invoice draft saved.", "success", 3000);
+        }
+        return;
+    }
 
-    const apiBase = "http://127.0.0.1:8001/api";
+    showToast("Connecting to database...", "info", 2000);
 
     try {
         const response = await fetch(`${apiBase}/invoices`, {
@@ -3134,13 +3161,13 @@ async function saveToNeonCloud() {
         if (response.ok && result.success) {
             showToast(`✅ Invoice ${data.invoiceNo || ''} saved to Neon Cloud DB!`, "success", 5000);
         } else if (result.status === 'pending_configuration' || response.status === 500) {
-            showToast(`⚠️ Laravel API is online, but Neon DB connection is pending in backend/.env`, "warning", 6000);
+            showToast(`⚠️ Backend is online, but Neon DB connection is pending in backend/.env`, "warning", 6000);
         } else {
             showToast(`❌ Error saving invoice: ${result.message || 'Unknown error'}`, "error", 5000);
         }
     } catch (err) {
-        console.error("Laravel Neon API error:", err);
-        showToast("Could not connect to Laravel backend at http://127.0.0.1:8001. Please make sure the Laravel server is running.", "error", 6000);
+        console.error("Cloud DB API error:", err);
+        showToast(`Could not connect to backend at ${apiBase}. Please check server connection.`, "error", 6000);
     }
 }
 

@@ -39,6 +39,23 @@ const currencyRates = {
     "VND": { rate: 6350, code: "VND", symbol: "₫", name: "Vietnamese Dong" }
 };
 
+// Dynamic Environment & API Base Resolver
+function getApiBaseUrl() {
+    const customEndpoint = (localStorage.getItem('custom_cloud_api') || '').trim();
+    if (customEndpoint) {
+        return customEndpoint.replace(/\/+$/, '');
+    }
+
+    const host = window.location.hostname;
+    const isLocal = !host || host === 'localhost' || host === '127.0.0.1' || host === '::1' || window.location.protocol === 'file:';
+    if (isLocal) {
+        return 'http://127.0.0.1:8001/api';
+    }
+
+    // On live static host (e.g. GitHub Pages) with no cloud backend URL configured
+    return null;
+}
+
 // Set up PDF.js Worker
 if (typeof pdfjsLib !== 'undefined') {
     try {
@@ -1307,30 +1324,32 @@ async function onInvoiceStatusChange(id, newStatus) {
 
     // Sync status change to Neon DB
     try {
-        const apiBase = "http://127.0.0.1:8001/api";
-        const updateKey = inv.backendId || inv.invoiceNo || inv.id;
-        const res = await fetch(`${apiBase}/invoices/${encodeURIComponent(updateKey)}/status`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ status: newStatus })
-        });
-
-        if (res.status === 404 && inv.raw) {
-            // If invoice is not in DB yet, create it with this status
-            await fetch(`${apiBase}/invoices`, {
-                method: 'POST',
+        const apiBase = getApiBaseUrl();
+        if (apiBase) {
+            const updateKey = inv.backendId || inv.invoiceNo || inv.id;
+            const res = await fetch(`${apiBase}/invoices/${encodeURIComponent(updateKey)}/status`, {
+                method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({
-                    ...inv.raw,
-                    status: newStatus
-                })
+                body: JSON.stringify({ status: newStatus })
             });
+
+            if (res.status === 404 && inv.raw) {
+                // If invoice is not in DB yet, create it with this status
+                await fetch(`${apiBase}/invoices`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ...inv.raw,
+                        status: newStatus
+                    })
+                });
+            }
         }
     } catch (e) {
         console.warn("Backend status update note:", e);
@@ -1347,20 +1366,22 @@ async function softDeleteInvoice(id) {
         return;
     }
 
-    // Attempt to soft delete in Neon DB backend
+    // Attempt to soft delete in Neon DB backend if API is configured
     try {
-        const apiBase = "http://127.0.0.1:8001/api";
-        const deleteKey = inv.backendId || inv.invoiceNo || inv.id;
-        const response = await fetch(`${apiBase}/invoices/${encodeURIComponent(deleteKey)}`, {
-            method: 'DELETE',
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
-        if (response.ok) {
-            const resJson = await response.json().catch(() => ({}));
-            if (resJson.success) {
-                showToast(`🗑️ ${resJson.message || `Invoice ${invoiceNo} soft deleted from Neon DB.`}`, 'success', 3500);
+        const apiBase = getApiBaseUrl();
+        if (apiBase) {
+            const deleteKey = inv.backendId || inv.invoiceNo || inv.id;
+            const response = await fetch(`${apiBase}/invoices/${encodeURIComponent(deleteKey)}`, {
+                method: 'DELETE',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            if (response.ok) {
+                const resJson = await response.json().catch(() => ({}));
+                if (resJson.success) {
+                    showToast(`🗑️ ${resJson.message || `Invoice ${invoiceNo} soft deleted from Neon DB.`}`, 'success', 3500);
+                }
             }
         }
     } catch (err) {
@@ -1589,12 +1610,18 @@ function loadSampleInvoices() {
 // SYNC INVOICES FROM LARAVEL + NEON CLOUD DATABASE
 async function syncFromNeonCloud(options = {}) {
     const isAutoSync = options && options.isAutoSync === true;
+    const apiBase = getApiBaseUrl();
+
+    if (!apiBase) {
+        if (!isAutoSync) {
+            showToast("Running in Local Client Mode (Browser Storage). Invoices are saved locally.", "info", 5000);
+        }
+        return;
+    }
     
     if (!isAutoSync) {
-        showToast("Fetching invoices from Neon Database...", "info", 2000);
+        showToast("Fetching invoices from Cloud Database...", "info", 2000);
     }
-
-    const apiBase = "http://127.0.0.1:8001/api";
 
     try {
         const response = await fetch(`${apiBase}/invoices?per_page=-1`, {
@@ -1607,7 +1634,7 @@ async function syncFromNeonCloud(options = {}) {
         if (response.ok && invoiceList.length >= 0) {
             if (invoiceList.length === 0) {
                 if (!isAutoSync) {
-                    showToast("Neon DB connected (0 invoices currently in database)", "info", 4000);
+                    showToast("Connected to database (0 invoices found)", "info", 4000);
                 }
                 return;
             }
@@ -1657,34 +1684,41 @@ async function syncFromNeonCloud(options = {}) {
             if (isAutoSync) {
                 showToast(`Auto-synced ${cloudRecords.length} live invoices from Neon DB`, "success", 3000);
             } else {
-                showToast(`Synced ${cloudRecords.length} invoices from Neon Cloud Database!`, "success", 4000);
+                showToast(`Synced ${cloudRecords.length} invoices from Cloud Database!`, "success", 4000);
             }
         } else if (!isAutoSync) {
             if (result.status === 'pending_configuration') {
-                showToast("Laravel is online, but Neon DB connection is pending in backend/.env", "warning", 6000);
+                showToast("Backend is online, but Neon DB connection is pending in backend/.env", "warning", 6000);
             } else {
-                showToast(`Could not fetch from Neon DB: ${result.message || 'Unknown error'}`, "error", 5000);
+                showToast(`Could not fetch from Cloud DB: ${result.message || 'Unknown error'}`, "error", 5000);
             }
         }
     } catch (err) {
         if (!isAutoSync) {
             console.error("Sync error:", err);
-            showToast("Could not connect to Laravel API at http://127.0.0.1:8001.", "error", 6000);
+            showToast(`Could not connect to API server at ${apiBase}.`, "error", 6000);
         } else {
-            console.log("Auto-sync: Laravel server not reachable on load.");
+            console.log("Auto-sync: API server not reachable on load.");
         }
     }
 }
 
-// UPLOAD ALL PARSED INVOICES TO LARAVEL + NEON CLOUD DATABASE
+// UPLOAD ALL PARSED INVOICES TO LARAVEL + NEON CLOUD DATABASE OR LOCAL CACHE
 async function uploadAllToNeonCloud() {
     if (parsedInvoices.length === 0) {
         showToast("No invoices to save. Drop PDF files or load sample data first.", "warning");
         return;
     }
 
-    showToast(`Uploading ${parsedInvoices.length} invoices to Neon DB...`, "info", 3000);
-    const apiBase = "http://127.0.0.1:8001/api";
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) {
+        localStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
+        sessionStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
+        showToast(`Saved ${parsedInvoices.length} invoices locally in browser storage.`, "success", 4000);
+        return;
+    }
+
+    showToast(`Uploading ${parsedInvoices.length} invoices to Cloud DB...`, "info", 3000);
 
     const payload = parsedInvoices.map(inv => inv.raw || {
         invoiceNo: inv.invoiceNo,
@@ -1718,12 +1752,12 @@ async function uploadAllToNeonCloud() {
         if (response.ok && result.success) {
             showToast(`✅ ${result.imported_count} invoices saved to Neon PostgreSQL Database!`, "success", 5000);
         } else if (result.status === 'pending_configuration') {
-            showToast("⚠️ Laravel is online, but Neon DB connection is pending in backend/.env", "warning", 6000);
+            showToast("⚠️ Backend is online, but Neon DB connection is pending in backend/.env", "warning", 6000);
         } else {
             showToast(`❌ Bulk upload error: ${result.message || 'Unknown error'}`, "error", 5000);
         }
     } catch (err) {
         console.error("Bulk upload error:", err);
-        showToast("Could not connect to Laravel API at http://127.0.0.1:8001.", "error", 6000);
+        showToast(`Could not connect to API server at ${apiBase}.`, "error", 6000);
     }
 }
