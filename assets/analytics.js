@@ -52,8 +52,8 @@ function getApiBaseUrl() {
         return 'http://127.0.0.1:8001/api';
     }
 
-    // On live static host (e.g. GitHub Pages) with no cloud backend URL configured
-    return null;
+    // Live Cloud Backend on Render
+    return 'https://e-invoice-travelagency.onrender.com/api';
 }
 
 // API Configuration Modal Logic
