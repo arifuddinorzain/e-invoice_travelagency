@@ -1,0 +1,12 @@
+{
+  "cleanUrls": true,
+  "routes": [
+    {
+      "src": "/backend/(.*)",
+      "status": 404
+    },
+    {
+      "handle": "filesystem"
+    }
+  ]
+}
