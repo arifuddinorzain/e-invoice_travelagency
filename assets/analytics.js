@@ -1705,16 +1705,19 @@ function showLoadingScreen(title = "Loading...", subtitle = "Connecting to Neon 
     if (!overlay) {
         overlay = document.createElement('div');
         overlay.id = 'globalLoadingOverlay';
-        overlay.className = 'global-loading-overlay';
+        overlay.className = 'global-loading-overlay active show';
         overlay.innerHTML = `
             <div class="loading-modal-box">
                 <div class="spinner-ring">
                     <div class="spinner-core">
-                        <i class="fa-solid fa-cloud-arrow-up text-primary fs-3"></i>
+                        <i class="fa-solid fa-cloud-arrow-up text-primary" style="font-size: 24px;"></i>
                     </div>
                 </div>
-                <h6 class="mt-3 mb-1 fw-bold text-dark" id="globalLoadingTitle">${title}</h6>
+                <h5 class="mt-3 mb-1 fw-bold text-dark" id="globalLoadingTitle">${title}</h5>
                 <p class="text-muted small mb-0" id="globalLoadingSubtitle">${subtitle}</p>
+                <div class="loading-bar-wrap">
+                    <div class="loading-bar-indeterminate"></div>
+                </div>
             </div>
         `;
         document.body.appendChild(overlay);
@@ -1724,12 +1727,14 @@ function showLoadingScreen(title = "Loading...", subtitle = "Connecting to Neon 
         if (titleEl) titleEl.textContent = title;
         if (subEl) subEl.textContent = subtitle;
     }
+    overlay.classList.add('active', 'show');
     overlay.style.display = 'flex';
 }
 
 function hideLoadingScreen() {
     const overlay = document.getElementById('globalLoadingOverlay');
     if (overlay) {
+        overlay.classList.remove('active', 'show');
         overlay.style.display = 'none';
     }
 }
