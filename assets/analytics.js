@@ -1699,6 +1699,41 @@ function loadSampleInvoices() {
     showToast("Loaded 15 sample invoices for demonstration!", "success");
 }
 
+// GLOBAL FULL-SCREEN LOADING OVERLAY HELPERS
+function showLoadingScreen(title = "Loading...", subtitle = "Connecting to Neon PostgreSQL Cloud Database") {
+    let overlay = document.getElementById('globalLoadingOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'globalLoadingOverlay';
+        overlay.className = 'global-loading-overlay';
+        overlay.innerHTML = `
+            <div class="loading-modal-box">
+                <div class="spinner-ring">
+                    <div class="spinner-core">
+                        <i class="fa-solid fa-cloud-arrow-up text-primary fs-3"></i>
+                    </div>
+                </div>
+                <h6 class="mt-3 mb-1 fw-bold text-dark" id="globalLoadingTitle">${title}</h6>
+                <p class="text-muted small mb-0" id="globalLoadingSubtitle">${subtitle}</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    } else {
+        const titleEl = document.getElementById('globalLoadingTitle');
+        const subEl = document.getElementById('globalLoadingSubtitle');
+        if (titleEl) titleEl.textContent = title;
+        if (subEl) subEl.textContent = subtitle;
+    }
+    overlay.style.display = 'flex';
+}
+
+function hideLoadingScreen() {
+    const overlay = document.getElementById('globalLoadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+}
+
 // SYNC INVOICES FROM LARAVEL + NEON CLOUD DATABASE
 async function syncFromNeonCloud(options = {}) {
     const isAutoSync = options && options.isAutoSync === true;
@@ -1712,7 +1747,7 @@ async function syncFromNeonCloud(options = {}) {
     }
     
     if (!isAutoSync) {
-        showToast("Fetching invoices from Cloud Database...", "info", 2000);
+        showLoadingScreen("Syncing Invoices...", "Fetching live invoices from Neon PostgreSQL Database");
     }
 
     try {
@@ -1792,6 +1827,10 @@ async function syncFromNeonCloud(options = {}) {
         } else {
             console.log("Auto-sync: API server not reachable on load.");
         }
+    } finally {
+        if (!isAutoSync) {
+            hideLoadingScreen();
+        }
     }
 }
 
@@ -1802,15 +1841,27 @@ async function uploadAllToNeonCloud() {
         return;
     }
 
+    const uploadBtn = document.getElementById('btnUploadNeon');
+    const origHtml = uploadBtn ? uploadBtn.innerHTML : '';
+    if (uploadBtn) {
+        uploadBtn.disabled = true;
+        uploadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...';
+    }
+
+    showLoadingScreen("Saving Invoices...", `Pushing ${parsedInvoices.length} invoices to Neon PostgreSQL Database`);
+
     const apiBase = getApiBaseUrl();
     if (!apiBase) {
         localStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
         sessionStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
         showToast(`Saved ${parsedInvoices.length} invoices locally in browser storage.`, "success", 4000);
+        hideLoadingScreen();
+        if (uploadBtn) {
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = origHtml;
+        }
         return;
     }
-
-    showToast(`Uploading ${parsedInvoices.length} invoices to Cloud DB...`, "info", 3000);
 
     const payload = parsedInvoices.map(inv => inv.raw || {
         invoiceNo: inv.invoiceNo,
@@ -1851,5 +1902,11 @@ async function uploadAllToNeonCloud() {
     } catch (err) {
         console.error("Bulk upload error:", err);
         showToast(`Could not connect to API server at ${apiBase}.`, "error", 6000);
+    } finally {
+        hideLoadingScreen();
+        if (uploadBtn) {
+            uploadBtn.disabled = false;
+            uploadBtn.innerHTML = origHtml;
+        }
     }
 }

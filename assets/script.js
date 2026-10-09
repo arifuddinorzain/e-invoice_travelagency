@@ -3211,6 +3211,41 @@ function resetApiConfig() {
     showToast("API URL reset to default.", "info", 3000);
 }
 
+// GLOBAL FULL-SCREEN LOADING OVERLAY HELPERS
+function showLoadingScreen(title = "Saving to Database...", subtitle = "Connecting to Neon PostgreSQL Cloud Database") {
+    let overlay = document.getElementById('globalLoadingOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'globalLoadingOverlay';
+        overlay.className = 'global-loading-overlay';
+        overlay.innerHTML = `
+            <div class="loading-modal-box">
+                <div class="spinner-ring">
+                    <div class="spinner-core">
+                        <i class="fa-solid fa-cloud-arrow-up text-primary fs-3"></i>
+                    </div>
+                </div>
+                <h6 class="mt-3 mb-1 fw-bold text-dark" id="globalLoadingTitle">${title}</h6>
+                <p class="text-muted small mb-0" id="globalLoadingSubtitle">${subtitle}</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    } else {
+        const titleEl = document.getElementById('globalLoadingTitle');
+        const subEl = document.getElementById('globalLoadingSubtitle');
+        if (titleEl) titleEl.textContent = title;
+        if (subEl) subEl.textContent = subtitle;
+    }
+    overlay.style.display = 'flex';
+}
+
+function hideLoadingScreen() {
+    const overlay = document.getElementById('globalLoadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+}
+
 // SAVE DIRECTLY TO LARAVEL + NEON CLOUD DATABASE OR LOCAL STORAGE
 async function saveToNeonCloud() {
     const data = getInvoiceData();
@@ -3218,6 +3253,15 @@ async function saveToNeonCloud() {
         showToast("Please fill in at least an Invoice No or Customer Name before saving.", "warning");
         return;
     }
+
+    const saveBtn = document.getElementById('btnSaveNeon');
+    const origHtml = saveBtn ? saveBtn.innerHTML : '';
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Saving...';
+    }
+
+    showLoadingScreen("Saving Invoice...", `Saving ${data.invoiceNo || 'invoice draft'} to Neon Cloud Database`);
 
     const apiBase = getApiBaseUrl();
     if (!apiBase) {
@@ -3227,11 +3271,15 @@ async function saveToNeonCloud() {
             showToast(`Saved invoice ${data.invoiceNo || ''} locally to browser storage!`, "success", 4000);
         } catch (e) {
             showToast("Invoice draft saved.", "success", 3000);
+        } finally {
+            hideLoadingScreen();
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = origHtml;
+            }
         }
         return;
     }
-
-    showToast("Connecting to database...", "info", 2000);
 
     try {
         const response = await fetch(`${apiBase}/invoices`, {
@@ -3255,6 +3303,12 @@ async function saveToNeonCloud() {
     } catch (err) {
         console.error("Cloud DB API error:", err);
         showToast(`Could not connect to backend at ${apiBase}. Please check server connection.`, "error", 6000);
+    } finally {
+        hideLoadingScreen();
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = origHtml;
+        }
     }
 }
 
