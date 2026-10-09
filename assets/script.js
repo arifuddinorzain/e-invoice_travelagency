@@ -3136,12 +3136,16 @@ function openApiConfigModal() {
         statusBox.className = 'p-2 mb-3 rounded small d-none';
         statusBox.innerHTML = '';
     }
-    modal.classList.add('show');
+    modal.classList.add('show', 'active');
+    modal.style.display = 'flex';
 }
 
 function closeApiConfigModal() {
     const modal = document.getElementById('apiConfigModal');
-    if (modal) modal.classList.remove('show');
+    if (modal) {
+        modal.classList.remove('show', 'active');
+        modal.style.display = 'none';
+    }
 }
 
 async function testApiConnection() {

@@ -428,7 +428,7 @@
     </main>
 
     <!-- INVOICE DETAILS MODAL -->
-    <div id="invoiceDetailModal" class="modal-overlay" onclick="if(event.target === this) closeInvoiceModal()">
+    <div id="invoiceDetailModal" class="modal-overlay" style="display: none;" onclick="if(event.target === this) closeInvoiceModal()">
         <div class="modal-content-card">
             <div class="modal-header-custom">
                 <h5 class="m-0 fw-bold" id="modalInvoiceTitle">Invoice Details</h5>
@@ -444,7 +444,7 @@
     </div>
 
     <!-- CLOUD BACKEND API SETTINGS MODAL -->
-    <div id="apiConfigModal" class="modal-overlay" onclick="if(event.target === this) closeApiConfigModal()">
+    <div id="apiConfigModal" class="modal-overlay" style="display: none;" onclick="if(event.target === this) closeApiConfigModal()">
         <div class="modal-content-card" style="max-width: 520px;">
             <div class="modal-header-custom bg-light border-bottom">
                 <h5 class="m-0 fw-bold text-dark"><i class="fa-solid fa-server text-primary me-2"></i> Cloud Backend API Settings</h5>
@@ -484,7 +484,7 @@
     <div id="toastContainer" class="custom-toast-container"></div>
 
     <!-- Analytics Engine Script -->
-    <script src="assets/analytics.js?v=12"></script>
+    <script src="assets/analytics.js?v=13"></script>
 </body>
 
 </html>
