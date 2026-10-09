@@ -1458,8 +1458,11 @@ async function softDeleteInvoice(id) {
         return;
     }
 
-    // Attempt to soft delete in Neon DB backend if API is configured
+    // Show full-screen locking overlay to block all user interactions
+    showLoadingScreen("Deleting Invoice...", `Soft-deleting invoice ${invoiceNo} from Neon Database`);
+
     try {
+        // Attempt to soft delete in Neon DB backend if API is configured
         const apiBase = getApiBaseUrl();
         if (apiBase) {
             const deleteKey = inv.backendId || inv.invoiceNo || inv.id;
@@ -1478,19 +1481,23 @@ async function softDeleteInvoice(id) {
         }
     } catch (err) {
         console.warn("Backend soft delete notification note:", err);
+    } finally {
+        // Remove from in-memory records
+        parsedInvoices = parsedInvoices.filter(i => i.id !== id);
+        filteredInvoices = filteredInvoices.filter(i => i.id !== id);
+
+        // Save updated state to storage
+        localStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
+        sessionStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
+
+        // Refresh KPIs, charts, and table
+        populateFilterDropdowns();
+        updateDashboard();
+
+        // Dismiss loading screen and show confirmation
+        hideLoadingScreen();
+        showToast(`Invoice ${invoiceNo} removed from dashboard.`, 'info', 3000);
     }
-
-    // Remove from in-memory records
-    parsedInvoices = parsedInvoices.filter(i => i.id !== id);
-    filteredInvoices = filteredInvoices.filter(i => i.id !== id);
-
-    // Save updated state to sessionStorage
-    sessionStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
-
-    // Refresh KPIs, charts, and table
-    populateFilterDropdowns();
-    updateDashboard();
-    showToast(`Invoice ${invoiceNo} removed from dashboard.`, 'info', 3000);
 }
 
 // Detail Modal
