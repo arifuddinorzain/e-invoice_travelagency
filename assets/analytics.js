@@ -103,9 +103,10 @@ async function testApiConnection() {
     try {
         const res = await fetch(`${targetUrl}/test-db`, { headers: { 'Accept': 'application/json' } });
         const data = await res.json();
-        if (res.ok && data.database === 'connected') {
+        if (res.ok && (data.status === 'connected' || data.database === 'connected')) {
+            const count = data.total_saved_invoices ?? data.invoices_count ?? 0;
             statusBox.className = 'p-2 mb-3 rounded small bg-success text-white';
-            statusBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> Connected successfully! Neon DB has ${data.invoices_count || 0} invoices.`;
+            statusBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> Connected successfully to Neon DB (${data.database || 'neondb'}). Saved invoices: ${count}.`;
         } else {
             statusBox.className = 'p-2 mb-3 rounded small bg-warning text-dark';
             statusBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i> Server online, but database returned: ${data.message || 'Check database URL'}`;
@@ -1827,7 +1828,9 @@ async function syncFromNeonCloud(options = {}) {
             }
         } else if (!isAutoSync) {
             if (result.status === 'pending_configuration') {
-                showToast("Backend is online, but Neon DB connection is pending in backend/.env", "warning", 6000);
+                showToast("Database connection pending configuration in backend/.env", "warning", 6000);
+            } else if (response.status >= 500) {
+                showToast(`Cloud server error (${response.status}): ${result.message || 'Please retry in a moment'}`, "error", 5000);
             } else {
                 showToast(`Could not fetch from Cloud DB: ${result.message || 'Unknown error'}`, "error", 5000);
             }
@@ -1835,9 +1838,13 @@ async function syncFromNeonCloud(options = {}) {
     } catch (err) {
         if (!isAutoSync) {
             console.error("Sync error:", err);
-            showToast(`Could not connect to API server at ${apiBase}.`, "error", 6000);
+            if (apiBase.includes('onrender.com')) {
+                showToast("Cloud server is waking up (takes ~30s on Render free tier). Please retry in a few seconds.", "warning", 8000);
+            } else {
+                showToast(`Could not connect to API server at ${apiBase}.`, "error", 6000);
+            }
         } else {
-            console.log("Auto-sync: API server not reachable on load.");
+            console.log("Auto-sync: API server not reachable on load (may be waking up).");
         }
     } finally {
         if (!isAutoSync) {
@@ -1902,18 +1909,29 @@ async function uploadAllToNeonCloud() {
             body: JSON.stringify({ invoices: payload })
         });
 
-        const result = await response.json();
+        let result = {};
+        try {
+            result = await response.json();
+        } catch (e) {
+            result = { message: response.statusText || 'Server error' };
+        }
 
         if (response.ok && result.success) {
             showToast(`✅ ${result.imported_count} invoices saved to Neon PostgreSQL Database!`, "success", 5000);
         } else if (result.status === 'pending_configuration') {
-            showToast("⚠️ Backend is online, but Neon DB connection is pending in backend/.env", "warning", 6000);
+            showToast("Database connection pending configuration in backend/.env", "warning", 6000);
+        } else if (response.status >= 500) {
+            showToast(`❌ Cloud server error (${response.status}): ${result.message || 'Please retry in a moment'}`, "error", 6000);
         } else {
             showToast(`❌ Bulk upload error: ${result.message || 'Unknown error'}`, "error", 5000);
         }
     } catch (err) {
         console.error("Bulk upload error:", err);
-        showToast(`Could not connect to API server at ${apiBase}.`, "error", 6000);
+        if (apiBase.includes('onrender.com')) {
+            showToast("Cloud server is waking up (takes ~30s on Render free tier). Please retry in a few seconds.", "warning", 8000);
+        } else {
+            showToast(`Could not connect to API server at ${apiBase}.`, "error", 6000);
+        }
     } finally {
         hideLoadingScreen();
         if (uploadBtn) {

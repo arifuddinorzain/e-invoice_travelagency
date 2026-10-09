@@ -3171,9 +3171,10 @@ async function testApiConnection() {
     try {
         const res = await fetch(`${targetUrl}/test-db`, { headers: { 'Accept': 'application/json' } });
         const data = await res.json();
-        if (res.ok && data.database === 'connected') {
+        if (res.ok && (data.status === 'connected' || data.database === 'connected')) {
+            const count = data.total_saved_invoices ?? data.invoices_count ?? 0;
             statusBox.className = 'p-2 mb-3 rounded small bg-success text-white';
-            statusBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> Connected successfully! Neon DB has ${data.invoices_count || 0} invoices.`;
+            statusBox.innerHTML = `<i class="fa-solid fa-circle-check me-1"></i> Connected successfully to Neon DB (${data.database || 'neondb'}). Saved invoices: ${count}.`;
         } else {
             statusBox.className = 'p-2 mb-3 rounded small bg-warning text-dark';
             statusBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i> Server online, but database returned: ${data.message || 'Check database URL'}`;
@@ -3296,18 +3297,29 @@ async function saveToNeonCloud() {
             body: JSON.stringify(data)
         });
 
-        const result = await response.json();
+        let result = {};
+        try {
+            result = await response.json();
+        } catch (e) {
+            result = { message: response.statusText || 'Server error' };
+        }
 
         if (response.ok && result.success) {
             showToast(`✅ Invoice ${data.invoiceNo || ''} saved to Neon Cloud DB!`, "success", 5000);
-        } else if (result.status === 'pending_configuration' || response.status === 500) {
-            showToast(`⚠️ Backend is online, but Neon DB connection is pending in backend/.env`, "warning", 6000);
+        } else if (result.status === 'pending_configuration') {
+            showToast("Database connection pending configuration in backend/.env", "warning", 6000);
+        } else if (response.status >= 500) {
+            showToast(`❌ Cloud Server error (${response.status}): ${result.message || 'Please retry in a moment'}`, "error", 6000);
         } else {
             showToast(`❌ Error saving invoice: ${result.message || 'Unknown error'}`, "error", 5000);
         }
     } catch (err) {
         console.error("Cloud DB API error:", err);
-        showToast(`Could not connect to backend at ${apiBase}. Please check server connection.`, "error", 6000);
+        if (apiBase.includes('onrender.com')) {
+            showToast("Cloud server is waking up (takes ~30s on Render free tier). Please retry in a few seconds.", "warning", 8000);
+        } else {
+            showToast(`Could not connect to backend at ${apiBase}. Please check server connection.`, "error", 6000);
+        }
     } finally {
         hideLoadingScreen();
         if (saveBtn) {
