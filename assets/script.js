@@ -171,10 +171,6 @@ function initCompanyDefault() {
     if (taxToggle && !taxToggle.checked) {
         taxToggle.checked = true;
     }
-    const bankToggle = document.getElementById("showBankDetails");
-    if (bankToggle && !bankToggle.checked) {
-        bankToggle.checked = true;
-    }
     const taxInput = document.getElementById("tax");
     if (taxInput && (!taxInput.value || taxInput.value === "0" || taxInput.value === "")) {
         taxInput.value = "8";
@@ -3025,7 +3021,8 @@ function getInvoiceData() {
         depositPaid: document.getElementById("depositPaid") ? document.getElementById("depositPaid").value : "",
         tax: document.getElementById("tax") ? document.getElementById("tax").value : "8",
         enableTax: document.getElementById("enableTax") ? document.getElementById("enableTax").checked : false,
-        showBankDetails: document.getElementById("showBankDetails") ? document.getElementById("showBankDetails").checked : true,
+        showBankDetails: document.getElementById("showBankDetails") ? Boolean(document.getElementById("showBankDetails").checked) : true,
+        show_bank_details: document.getElementById("showBankDetails") ? Boolean(document.getElementById("showBankDetails").checked) : true,
         approvedByName: document.getElementById("approvedByName") ? document.getElementById("approvedByName").value : "",
         showCompanyEmail: document.getElementById("showCompanyEmail") ? document.getElementById("showCompanyEmail").checked : false,
         showCompanyLicense: document.getElementById("showCompanyLicense") ? document.getElementById("showCompanyLicense").checked : false,
@@ -3319,6 +3316,43 @@ async function saveToNeonCloud() {
         if (response.ok && result.success) {
             try {
                 localStorage.setItem('savedInvoiceDraft', JSON.stringify(data));
+
+                // Immediately synchronize analytics_invoices_cache so navigating to Analytics and editing back has latest state
+                const cacheStr = localStorage.getItem('analytics_invoices_cache') || sessionStorage.getItem('analytics_invoices_cache');
+                if (cacheStr) {
+                    try {
+                        let cacheList = JSON.parse(cacheStr);
+                        if (Array.isArray(cacheList)) {
+                            const invKey = data.invoiceNo || '';
+                            const matchIdx = cacheList.findIndex(i => invKey && (i.id === invKey || i.invoiceNo === invKey || (i.raw && i.raw.invoiceNo === invKey)));
+                            const normalized = {
+                                ...data,
+                                id: invKey || ('INV-' + Date.now()),
+                                invoiceNo: invKey,
+                                showBankDetails: Boolean(data.showBankDetails),
+                                raw: data
+                            };
+                            if (matchIdx !== -1) {
+                                cacheList[matchIdx] = {
+                                    ...cacheList[matchIdx],
+                                    ...normalized,
+                                    showBankDetails: Boolean(data.showBankDetails),
+                                    raw: {
+                                        ...(cacheList[matchIdx].raw || {}),
+                                        ...data,
+                                        showBankDetails: Boolean(data.showBankDetails)
+                                    }
+                                };
+                            } else {
+                                cacheList.unshift(normalized);
+                            }
+                            localStorage.setItem('analytics_invoices_cache', JSON.stringify(cacheList));
+                            sessionStorage.setItem('analytics_invoices_cache', JSON.stringify(cacheList));
+                        }
+                    } catch (syncErr) {
+                        console.warn("Analytics cache sync note:", syncErr);
+                    }
+                }
             } catch (e) {}
             showToast(`✅ Invoice ${data.invoiceNo || ''} saved to Neon Cloud DB!`, "success", 5000);
         } else if (result.status === 'pending_configuration') {
@@ -3498,12 +3532,15 @@ function populateFormWithInvoiceData(data) {
     }
     if (document.getElementById("showBankDetails")) {
         const hasBankProp = data.showBankDetails !== undefined || data.show_bank_details !== undefined || data.bank_details_enabled !== undefined;
+        let isEnabled = true;
         if (hasBankProp) {
             const rawVal = data.showBankDetails !== undefined ? data.showBankDetails : (data.show_bank_details !== undefined ? data.show_bank_details : data.bank_details_enabled);
-            const isEnabled = (rawVal === true || rawVal === 1 || rawVal === 'true' || rawVal === '1');
-            document.getElementById("showBankDetails").checked = isEnabled;
-        } else {
-            document.getElementById("showBankDetails").checked = true;
+            isEnabled = (rawVal === true || rawVal === 1 || rawVal === 'true' || rawVal === '1');
+        }
+        document.getElementById("showBankDetails").checked = isEnabled;
+        const pBankBox = document.getElementById("previewBankBox") || document.querySelector(".bank-info-box");
+        if (pBankBox) {
+            pBankBox.style.display = isEnabled ? "block" : "none";
         }
     }
     if (data.packageIncludes) {
@@ -4057,6 +4094,7 @@ try {
         if (preloaded) {
             const parsedData = JSON.parse(preloaded);
             populateFormWithInvoiceData(parsedData);
+            updateInvoice();
             showToast("Invoice loaded from Analytics Dashboard!", "success", 4000);
             localStorage.removeItem('preload_draft_invoice');
         }

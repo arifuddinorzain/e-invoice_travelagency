@@ -483,7 +483,11 @@ function normalizeInvoiceRecord(raw, fileName = "") {
         normalizedDepositMYR: normalizedDepositMYR,
         normalizedBalanceMYR: normalizedBalanceMYR,
         backendId: raw.backendId || (typeof raw.id === 'number' ? raw.id : null),
-        showBankDetails: raw.showBankDetails !== undefined ? raw.showBankDetails : true,
+        showBankDetails: (function () {
+            const val = raw.showBankDetails !== undefined ? raw.showBankDetails : (raw.show_bank_details !== undefined ? raw.show_bank_details : raw.bank_details_enabled);
+            if (val === undefined || val === null) return true;
+            return (val === true || val === 1 || val === 'true' || val === '1');
+        })(),
         raw: raw
     };
 }
@@ -1583,14 +1587,73 @@ function closeInvoiceModal() {
     document.getElementById('invoiceDetailModal')?.classList.remove('active');
 }
 
-function openInGenerator(id) {
-    const inv = parsedInvoices.find(i => i.id === id);
-    if (!inv || !inv.raw) return;
+async function openInGenerator(id) {
+    showLoadingScreen("Opening Invoice...", "Preparing draft in Invoice Generator");
+    const inv = parsedInvoices.find(i => i.id === id || i.invoiceNo === id || i.backendId == id);
+    let rawDraft = inv?.raw ? { ...inv.raw } : null;
 
-    const rawDraft = { ...inv.raw };
-    if (rawDraft.showBankDetails === undefined && inv.showBankDetails !== undefined) {
-        rawDraft.showBankDetails = inv.showBankDetails;
+    try {
+        const apiBase = getApiBaseUrl();
+        if (apiBase) {
+            const fetchKey = inv?.backendId || inv?.invoiceNo || id;
+            const res = await fetch(`${apiBase}/invoices/${encodeURIComponent(fetchKey)}`, {
+                headers: { "Accept": "application/json" }
+            });
+            if (res.ok) {
+                const fresh = await res.json();
+                if (fresh) {
+                    let freshRaw = fresh.raw_draft;
+                    if (typeof freshRaw === 'string') {
+                        try { freshRaw = JSON.parse(freshRaw); } catch (e) { freshRaw = null; }
+                    }
+
+                    const rawBank = (freshRaw && freshRaw.showBankDetails !== undefined) ? freshRaw.showBankDetails :
+                        ((freshRaw && freshRaw.show_bank_details !== undefined) ? freshRaw.show_bank_details :
+                        (fresh.show_bank_details !== undefined && fresh.show_bank_details !== null ? fresh.show_bank_details : undefined));
+
+                    let bankVis = true;
+                    if (rawBank !== undefined) {
+                        bankVis = (rawBank === true || rawBank === 1 || rawBank === 'true' || rawBank === '1');
+                    }
+
+                    if (freshRaw && typeof freshRaw === 'object') {
+                        rawDraft = {
+                            ...freshRaw,
+                            backendId: fresh.id,
+                            invoiceNo: fresh.invoice_no,
+                            showBankDetails: bankVis,
+                            show_bank_details: bankVis
+                        };
+                    } else if (rawDraft) {
+                        rawDraft.showBankDetails = bankVis;
+                        rawDraft.show_bank_details = bankVis;
+                        rawDraft.backendId = fresh.id;
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("Could not fetch fresh record from API, using cached:", e);
     }
+
+    if (!rawDraft) {
+        hideLoadingScreen();
+        showToast("Invoice data not found.", "warning");
+        return;
+    }
+
+    let finalBankVisible = true;
+    const probeVal = rawDraft.showBankDetails !== undefined ? rawDraft.showBankDetails :
+        (rawDraft.show_bank_details !== undefined ? rawDraft.show_bank_details :
+        (inv && inv.showBankDetails !== undefined ? inv.showBankDetails : undefined));
+
+    if (probeVal !== undefined) {
+        finalBankVisible = (probeVal === true || probeVal === 1 || probeVal === 'true' || probeVal === '1');
+    }
+
+    rawDraft.showBankDetails = finalBankVisible;
+    rawDraft.show_bank_details = finalBankVisible;
+
     localStorage.setItem('preload_draft_invoice', JSON.stringify(rawDraft));
     window.location.href = 'index.html?loadPreloaded=true';
 }
@@ -1795,10 +1858,12 @@ async function syncFromNeonCloud(options = {}) {
                 }
 
                 let bankVisible = true;
-                if (draftObj && draftObj.showBankDetails !== undefined) {
-                    bankVisible = (draftObj.showBankDetails === true || draftObj.showBankDetails === 1 || draftObj.showBankDetails === 'true' || draftObj.showBankDetails === '1');
-                } else if (dbInv.show_bank_details !== undefined && dbInv.show_bank_details !== null) {
-                    bankVisible = (dbInv.show_bank_details === true || dbInv.show_bank_details === 1 || dbInv.show_bank_details === 'true' || dbInv.show_bank_details === '1');
+                const rawBank = (draftObj && draftObj.showBankDetails !== undefined) ? draftObj.showBankDetails :
+                    ((draftObj && draftObj.show_bank_details !== undefined) ? draftObj.show_bank_details :
+                    (dbInv.show_bank_details !== undefined && dbInv.show_bank_details !== null ? dbInv.show_bank_details : undefined));
+
+                if (rawBank !== undefined) {
+                    bankVisible = (rawBank === true || rawBank === 1 || rawBank === 'true' || rawBank === '1');
                 }
 
                 const raw = draftObj ? {
@@ -1808,7 +1873,8 @@ async function syncFromNeonCloud(options = {}) {
                     invoiceDate: invDate,
                     dueDate: dueDate,
                     status: invStatus,
-                    showBankDetails: bankVisible
+                    showBankDetails: bankVisible,
+                    show_bank_details: bankVisible
                 } : {
                     backendId: dbInv.id,
                     invoiceNo: dbInv.invoice_no,
@@ -1828,6 +1894,7 @@ async function syncFromNeonCloud(options = {}) {
                     grandTotal: parseFloat(dbInv.subtotal) || 0,
                     packageIncludes: dbInv.package_includes || {},
                     showBankDetails: bankVisible,
+                    show_bank_details: bankVisible,
                     items: dbInv.items_data || [],
                     addons: dbInv.addons_data || []
                 };

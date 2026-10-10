@@ -228,15 +228,29 @@ class InvoiceController extends Controller
                     'balance_due' => $balanceDue,
                     'tax_percent' => (float) ($data['tax'] ?? $data['tax_percent'] ?? 0),
                     'tax_enabled' => (bool) ($data['enableTax'] ?? $data['tax_enabled'] ?? false),
-                    'show_bank_details' => isset($data['showBankDetails']) ? (bool)$data['showBankDetails'] : (isset($data['show_bank_details']) ? (bool)$data['show_bank_details'] : true),
+                    'show_bank_details' => (function() use ($data) {
+                        $raw = $data['showBankDetails'] ?? $data['show_bank_details'] ?? $data['bank_details_enabled'] ?? null;
+                        if ($raw === null) return true;
+                        $b = filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                        return $b !== null ? $b : ($raw === true || $raw === 1 || $raw === '1' || $raw === 'true');
+                    })(),
                     'status' => $status,
                     'approved_by' => $data['approvedByName'] ?? $data['approved_by'] ?? null,
                     'package_includes' => $data['packageIncludes'] ?? $data['package_includes'] ?? null,
                     'items_data' => $items,
                     'addons_data' => $addons,
-                    'raw_draft' => array_merge($data, [
-                        'showBankDetails' => isset($data['showBankDetails']) ? (bool)$data['showBankDetails'] : (isset($data['show_bank_details']) ? (bool)$data['show_bank_details'] : true)
-                    ])
+                    'raw_draft' => (function() use ($data) {
+                        $raw = $data['showBankDetails'] ?? $data['show_bank_details'] ?? $data['bank_details_enabled'] ?? null;
+                        $bankBool = true;
+                        if ($raw !== null) {
+                            $b = filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                            $bankBool = $b !== null ? $b : ($raw === true || $raw === 1 || $raw === '1' || $raw === 'true');
+                        }
+                        return array_merge($data, [
+                            'showBankDetails' => $bankBool,
+                            'show_bank_details' => $bankBool,
+                        ]);
+                    })()
                 ]
             );
 
@@ -386,7 +400,8 @@ class InvoiceController extends Controller
 
         foreach ($invoices as $invData) {
             try {
-                $req = new Request($invData);
+                $req = new Request();
+                $req->replace($invData);
                 $this->store($req);
                 $savedCount++;
             } catch (\Exception $e) {
