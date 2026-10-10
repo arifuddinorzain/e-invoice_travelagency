@@ -9,7 +9,7 @@
     <title>Invoice Generator</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="assets/style.css?v=38">
+    <link rel="stylesheet" href="assets/style.css?v=39">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -454,7 +454,15 @@
                                 </div>
                             </div>
                             <input type="number" id="tax" value="8" placeholder="8"
-                                class="form-control form-control-sm">
+                                class="form-control form-control-sm mb-2">
+
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label class="form-label small fw-bold text-secondary mb-0">Bank Details</label>
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" id="showBankDetails" checked
+                                        title="Toggle Bank Details visibility in preview" onchange="updateInvoice()">
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -767,7 +775,7 @@
                             <!-- Footer Info & Signature Area (Bottom Inline) -->
                             <div class="footer-signature-area">
                                 <!-- Bank Payment Details (Bottom Left) -->
-                                <div class="bank-info-box">
+                                <div class="bank-info-box" id="previewBankBox">
                                     <div class="bank-info-title">
                                         <i class="fa-solid fa-building-columns me-1" style="color: #EF6C00;"></i>
                                         <span>Thông tin tài khoản <small
@@ -835,7 +843,7 @@
     <!-- Toast Notification Container -->
     <div id="toastContainer" class="custom-toast-container"></div>
 
-    <script src="assets/script.js?v=82"></script>
+    <script src="assets/script.js?v=83"></script>
 </body>
 
 </html>

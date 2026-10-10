@@ -171,6 +171,10 @@ function initCompanyDefault() {
     if (taxToggle && !taxToggle.checked) {
         taxToggle.checked = true;
     }
+    const bankToggle = document.getElementById("showBankDetails");
+    if (bankToggle && !bankToggle.checked) {
+        bankToggle.checked = true;
+    }
     const taxInput = document.getElementById("tax");
     if (taxInput && (!taxInput.value || taxInput.value === "0" || taxInput.value === "")) {
         taxInput.value = "8";
@@ -2501,6 +2505,13 @@ function updateInvoice() {
     if (pSigNameBottom) {
         pSigNameBottom.innerText = sigName ? sigName : "";
     }
+
+    // 7. Bank Details Visibility
+    let showBank = document.getElementById("showBankDetails") ? document.getElementById("showBankDetails").checked : true;
+    let pBankBox = document.getElementById("previewBankBox") || document.querySelector(".bank-info-box");
+    if (pBankBox) {
+        pBankBox.style.display = showBank ? "block" : "none";
+    }
 }
 
 /* Listeners */
@@ -3014,6 +3025,7 @@ function getInvoiceData() {
         depositPaid: document.getElementById("depositPaid") ? document.getElementById("depositPaid").value : "",
         tax: document.getElementById("tax") ? document.getElementById("tax").value : "8",
         enableTax: document.getElementById("enableTax") ? document.getElementById("enableTax").checked : false,
+        showBankDetails: document.getElementById("showBankDetails") ? document.getElementById("showBankDetails").checked : true,
         approvedByName: document.getElementById("approvedByName") ? document.getElementById("approvedByName").value : "",
         showCompanyEmail: document.getElementById("showCompanyEmail") ? document.getElementById("showCompanyEmail").checked : false,
         showCompanyLicense: document.getElementById("showCompanyLicense") ? document.getElementById("showCompanyLicense").checked : false,
@@ -3481,6 +3493,9 @@ function populateFormWithInvoiceData(data) {
     if (document.getElementById("enableTax")) {
         document.getElementById("enableTax").checked = data.enableTax !== undefined ? data.enableTax : true;
     }
+    if (document.getElementById("showBankDetails")) {
+        document.getElementById("showBankDetails").checked = data.showBankDetails !== undefined ? data.showBankDetails : true;
+    }
     if (data.packageIncludes) {
         if (document.getElementById("incMeals")) document.getElementById("incMeals").checked = !!data.packageIncludes.meals;
         if (document.getElementById("incTransport")) document.getElementById("incTransport").checked = !!data.packageIncludes.transport;
@@ -3605,6 +3620,7 @@ async function parseInvoiceTextFromPdf(pdfDoc, fullTextPreloaded = "") {
         depositPaid: "",
         tax: "8",
         enableTax: false,
+        showBankDetails: true,
         approvedByName: "",
         packageIncludes: { meals: false, transport: false, hotel: false, ticket: false },
         social: [],
