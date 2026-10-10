@@ -281,6 +281,7 @@ async function parseInvoiceText(pdfDoc) {
         depositPaid: 0,
         subtotal: 0,
         grandTotal: 0,
+        showBankDetails: /(?:Thông tin tài khoản|Bank Details|3743168|TMCP Á Châu|ASCBVNVX)/i.test(fullText),
         items: [],
         addons: []
     };
@@ -482,6 +483,7 @@ function normalizeInvoiceRecord(raw, fileName = "") {
         normalizedDepositMYR: normalizedDepositMYR,
         normalizedBalanceMYR: normalizedBalanceMYR,
         backendId: raw.backendId || (typeof raw.id === 'number' ? raw.id : null),
+        showBankDetails: raw.showBankDetails !== undefined ? raw.showBankDetails : true,
         raw: raw
     };
 }
@@ -1581,12 +1583,15 @@ function closeInvoiceModal() {
     document.getElementById('invoiceDetailModal')?.classList.remove('active');
 }
 
-// Seamless link into the Invoice Generator
 function openInGenerator(id) {
     const inv = parsedInvoices.find(i => i.id === id);
     if (!inv || !inv.raw) return;
 
-    localStorage.setItem('preload_draft_invoice', JSON.stringify(inv.raw));
+    const rawDraft = { ...inv.raw };
+    if (rawDraft.showBankDetails === undefined && inv.showBankDetails !== undefined) {
+        rawDraft.showBankDetails = inv.showBankDetails;
+    }
+    localStorage.setItem('preload_draft_invoice', JSON.stringify(rawDraft));
     window.location.href = 'index.html?loadPreloaded=true';
 }
 
@@ -1784,13 +1789,26 @@ async function syncFromNeonCloud(options = {}) {
                 const dueDate = (dbInv.due_date || '').split('T')[0] || invDate;
                 const invStatus = (dbInv.status || 'unpaid').toLowerCase();
 
-                const raw = dbInv.raw_draft ? {
-                    ...dbInv.raw_draft,
+                let draftObj = dbInv.raw_draft;
+                if (typeof draftObj === 'string') {
+                    try { draftObj = JSON.parse(draftObj); } catch (e) { draftObj = null; }
+                }
+
+                let bankVisible = true;
+                if (draftObj && draftObj.showBankDetails !== undefined) {
+                    bankVisible = (draftObj.showBankDetails === true || draftObj.showBankDetails === 1 || draftObj.showBankDetails === 'true' || draftObj.showBankDetails === '1');
+                } else if (dbInv.show_bank_details !== undefined && dbInv.show_bank_details !== null) {
+                    bankVisible = (dbInv.show_bank_details === true || dbInv.show_bank_details === 1 || dbInv.show_bank_details === 'true' || dbInv.show_bank_details === '1');
+                }
+
+                const raw = draftObj ? {
+                    ...draftObj,
                     backendId: dbInv.id,
                     invoiceNo: dbInv.invoice_no,
                     invoiceDate: invDate,
                     dueDate: dueDate,
-                    status: invStatus
+                    status: invStatus,
+                    showBankDetails: bankVisible
                 } : {
                     backendId: dbInv.id,
                     invoiceNo: dbInv.invoice_no,
@@ -1809,6 +1827,7 @@ async function syncFromNeonCloud(options = {}) {
                     depositPaid: parseFloat(dbInv.deposit_paid) || 0,
                     grandTotal: parseFloat(dbInv.subtotal) || 0,
                     packageIncludes: dbInv.package_includes || {},
+                    showBankDetails: bankVisible,
                     items: dbInv.items_data || [],
                     addons: dbInv.addons_data || []
                 };
@@ -1896,7 +1915,8 @@ async function uploadAllToNeonCloud() {
         exchangeRate: inv.exchangeRate,
         subtotal: inv.subtotal,
         depositPaid: inv.depositPaid,
-        grandTotal: inv.subtotal
+        grandTotal: inv.subtotal,
+        showBankDetails: inv.showBankDetails !== undefined ? inv.showBankDetails : true
     });
 
     try {

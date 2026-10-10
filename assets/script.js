@@ -3317,6 +3317,9 @@ async function saveToNeonCloud() {
         }
 
         if (response.ok && result.success) {
+            try {
+                localStorage.setItem('savedInvoiceDraft', JSON.stringify(data));
+            } catch (e) {}
             showToast(`✅ Invoice ${data.invoiceNo || ''} saved to Neon Cloud DB!`, "success", 5000);
         } else if (result.status === 'pending_configuration') {
             showToast("Database connection pending configuration in backend/.env", "warning", 6000);
@@ -3494,7 +3497,14 @@ function populateFormWithInvoiceData(data) {
         document.getElementById("enableTax").checked = data.enableTax !== undefined ? data.enableTax : true;
     }
     if (document.getElementById("showBankDetails")) {
-        document.getElementById("showBankDetails").checked = data.showBankDetails !== undefined ? data.showBankDetails : true;
+        const hasBankProp = data.showBankDetails !== undefined || data.show_bank_details !== undefined || data.bank_details_enabled !== undefined;
+        if (hasBankProp) {
+            const rawVal = data.showBankDetails !== undefined ? data.showBankDetails : (data.show_bank_details !== undefined ? data.show_bank_details : data.bank_details_enabled);
+            const isEnabled = (rawVal === true || rawVal === 1 || rawVal === 'true' || rawVal === '1');
+            document.getElementById("showBankDetails").checked = isEnabled;
+        } else {
+            document.getElementById("showBankDetails").checked = true;
+        }
     }
     if (data.packageIncludes) {
         if (document.getElementById("incMeals")) document.getElementById("incMeals").checked = !!data.packageIncludes.meals;
@@ -3620,7 +3630,7 @@ async function parseInvoiceTextFromPdf(pdfDoc, fullTextPreloaded = "") {
         depositPaid: "",
         tax: "8",
         enableTax: false,
-        showBankDetails: true,
+        showBankDetails: /(?:Thông tin tài khoản|Bank Details|3743168|TMCP Á Châu|ASCBVNVX)/i.test(fullText),
         approvedByName: "",
         packageIncludes: { meals: false, transport: false, hotel: false, ticket: false },
         social: [],

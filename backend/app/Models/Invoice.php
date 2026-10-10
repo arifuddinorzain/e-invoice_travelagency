@@ -22,6 +22,7 @@ class Invoice extends Model
         'balance_due' => 'float',
         'tax_percent' => 'float',
         'tax_enabled' => 'boolean',
+        'show_bank_details' => 'boolean',
         'trip_pax' => 'integer',
         'package_includes' => 'array',
         'items_data' => 'array',

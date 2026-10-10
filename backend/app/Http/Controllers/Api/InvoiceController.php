@@ -132,12 +132,13 @@ class InvoiceController extends Controller
         }
     }
 
-    /**
-     * Store or update an invoice.
-     */
     public function store(Request $request)
     {
         $data = $request->all();
+        if (empty($data)) {
+            $jsonParsed = $request->json()->all();
+            $data = !empty($jsonParsed) ? $jsonParsed : (json_decode($request->getContent(), true) ?: []);
+        }
 
         $invoiceNo = trim($data['invoiceNo'] ?? $data['invoice_no'] ?? '');
         if (empty($invoiceNo)) {
@@ -227,12 +228,15 @@ class InvoiceController extends Controller
                     'balance_due' => $balanceDue,
                     'tax_percent' => (float) ($data['tax'] ?? $data['tax_percent'] ?? 0),
                     'tax_enabled' => (bool) ($data['enableTax'] ?? $data['tax_enabled'] ?? false),
+                    'show_bank_details' => isset($data['showBankDetails']) ? (bool)$data['showBankDetails'] : (isset($data['show_bank_details']) ? (bool)$data['show_bank_details'] : true),
                     'status' => $status,
                     'approved_by' => $data['approvedByName'] ?? $data['approved_by'] ?? null,
                     'package_includes' => $data['packageIncludes'] ?? $data['package_includes'] ?? null,
                     'items_data' => $items,
                     'addons_data' => $addons,
-                    'raw_draft' => $data
+                    'raw_draft' => array_merge($data, [
+                        'showBankDetails' => isset($data['showBankDetails']) ? (bool)$data['showBankDetails'] : (isset($data['show_bank_details']) ? (bool)$data['show_bank_details'] : true)
+                    ])
                 ]
             );
 
