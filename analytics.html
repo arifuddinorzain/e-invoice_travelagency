@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 
     <!-- Custom Analytics Stylesheet -->
-    <link rel="stylesheet" href="assets/analytics.css?v=12">
+    <link rel="stylesheet" href="assets/analytics.css?v=13">
 
     <!-- Chart.js & PDF.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -79,58 +79,82 @@
     <!-- MAIN DASHBOARD CONTENT -->
     <main class="analytics-main">
 
-        <!-- BULK DRAG & DROP ZONE -->
-        <section class="bulk-dropzone-card" id="bulkDropZone">
-            <div class="dropzone-icon-wrap">
-                <i class="fa-solid fa-cloud-arrow-up"></i>
-            </div>
-            <div class="dropzone-title">Drag & Drop Bulk PDF Invoices or Folders Here</div>
-            <div class="dropzone-desc">
-                Drop multiple generated invoice PDFs or an entire folder of invoices. Our engine automatically parses
-                metadata, totals, line items, pax, and travel dates to generate real-time visual analytics.
-            </div>
-
-            <div class="dropzone-actions">
-                <!-- Choose Multiple Files -->
-                <button type="button" class="btn-upload-choice primary-choice"
-                    onclick="document.getElementById('bulkFileInput').click()">
-                    <i class="fa-solid fa-file-pdf"></i> Select PDF Invoices
-                </button>
-                <input type="file" id="bulkFileInput" multiple accept=".pdf,.inv,application/pdf"
-                    style="display: none;">
-
-                <!-- Choose Entire Folder -->
-                <button type="button" class="btn-upload-choice"
-                    onclick="document.getElementById('bulkFolderInput').click()">
-                    <i class="fa-solid fa-folder-open text-warning"></i> Select Invoices Folder
-                </button>
-                <input type="file" id="bulkFolderInput" webkitdirectory directory multiple style="display: none;">
-
-                <button type="button" class="btn-upload-choice" onclick="clearAllInvoices()">
-                    <i class="fa-solid fa-trash-can text-danger"></i> Clear All
-                </button>
-            </div>
-
-            <div class="dropzone-badges">
-                <span class="drop-badge"><i class="fa-solid fa-check text-success me-1"></i> PDF.js Text Parser</span>
-                <span class="drop-badge"><i class="fa-solid fa-bolt text-warning me-1"></i> Fast Embedded Stream
-                    Recovery</span>
-                <span class="drop-badge"><i class="fa-solid fa-folder-tree text-info me-1"></i> Subfolder Traversal
-                    Support</span>
-                <span class="drop-badge"><i class="fa-solid fa-shield-halved text-success me-1"></i> 100% Client-Side &
-                    Secure</span>
-            </div>
-
-            <!-- Real-time Processing Progress Bar -->
-            <div class="processing-progress-box" id="processingProgress">
-                <div class="progress-header">
-                    <span class="progress-title" id="progressTitle">Analyzing bulk invoices...</span>
-                    <span class="progress-pct" id="progressPercent">0%</span>
+        <!-- BULK DRAG & DROP ACCORDION CARD (COLLAPSIBLE) -->
+        <section class="bulk-dropzone-accordion collapsed" id="bulkDropZoneAccordion">
+            <!-- Accordion Toggle Header -->
+            <div class="dropzone-accordion-header" id="dropzoneAccordionHeader" onclick="toggleDropzoneAccordion()">
+                <div class="header-left">
+                    <div class="header-icon-circle">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <div class="header-text-group">
+                        <span class="header-title">Drag & Drop Bulk PDF Invoices or Folders</span>
+                        <span class="header-subtitle">Click to expand batch upload & PDF parser dropzone</span>
+                    </div>
                 </div>
-                <div class="progress-bar-wrap">
-                    <div class="progress-bar-fill" id="progressBarFill"></div>
+                <div class="header-right">
+                    <span class="header-action-pill">
+                        <span id="dropzoneAccordionStatus">Expand</span>
+                        <i class="fa-solid fa-chevron-down chevron-icon" id="dropzoneAccordionChevron"></i>
+                    </span>
                 </div>
-                <div class="progress-subtext" id="progressSubtext">Extracting metadata and items...</div>
+            </div>
+
+            <!-- Accordion Collapsible Body (Dropzone Area) -->
+            <div class="dropzone-accordion-body" id="dropzoneAccordionBody">
+                <div class="bulk-dropzone-inner" id="bulkDropZone">
+                    <div class="dropzone-icon-wrap">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <div class="dropzone-title">Drag & Drop Bulk PDF Invoices or Folders Here</div>
+                    <div class="dropzone-desc">
+                        Drop multiple generated invoice PDFs or an entire folder of invoices. Our engine automatically parses
+                        metadata, totals, line items, pax, and travel dates to generate real-time visual analytics.
+                    </div>
+
+                    <div class="dropzone-actions">
+                        <!-- Choose Multiple Files -->
+                        <button type="button" class="btn-upload-choice primary-choice"
+                            onclick="document.getElementById('bulkFileInput').click()">
+                            <i class="fa-solid fa-file-pdf"></i> Select PDF Invoices
+                        </button>
+                        <input type="file" id="bulkFileInput" multiple accept=".pdf,.inv,application/pdf"
+                            style="display: none;">
+
+                        <!-- Choose Entire Folder -->
+                        <button type="button" class="btn-upload-choice"
+                            onclick="document.getElementById('bulkFolderInput').click()">
+                            <i class="fa-solid fa-folder-open text-warning"></i> Select Invoices Folder
+                        </button>
+                        <input type="file" id="bulkFolderInput" webkitdirectory directory multiple style="display: none;">
+
+                        <button type="button" class="btn-upload-choice" onclick="clearAllInvoices()">
+                            <i class="fa-solid fa-trash-can text-danger"></i> Clear All
+                        </button>
+                    </div>
+
+                    <div class="dropzone-badges">
+                        <span class="drop-badge"><i class="fa-solid fa-check text-success me-1"></i> PDF.js Text Parser</span>
+                        <span class="drop-badge"><i class="fa-solid fa-bolt text-warning me-1"></i> Fast Embedded Stream
+                            Recovery</span>
+                        <span class="drop-badge"><i class="fa-solid fa-folder-tree text-info me-1"></i> Subfolder Traversal
+                            Support</span>
+                        <span class="drop-badge"><i class="fa-solid fa-shield-halved text-success me-1"></i> 100% Client-Side &
+                            Secure</span>
+                    </div>
+
+                    <!-- Real-time Processing Progress Bar -->
+                    <div class="processing-progress-box" id="processingProgress">
+                        <div class="progress-header">
+                            <span class="progress-title" id="progressTitle">Analyzing bulk invoices...</span>
+                            <span class="progress-pct" id="progressPercent">0%</span>
+                        </div>
+                        <div class="progress-bar-wrap">
+                            <div class="progress-bar-fill" id="progressBarFill"></div>
+                        </div>
+                        <div class="progress-subtext" id="progressSubtext">Extracting metadata and items...</div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -476,7 +500,7 @@
     <div id="toastContainer" class="custom-toast-container"></div>
 
     <!-- Analytics Engine Script -->
-    <script src="assets/analytics.js?v=22"></script>
+    <script src="assets/analytics.js?v=23"></script>
 </body>
 
 </html>

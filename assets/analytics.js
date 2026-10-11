@@ -650,55 +650,82 @@ async function handleBatchFiles(fileList) {
     }
 }
 
+// Toggle Dropzone Accordion Expand / Collapse
+function toggleDropzoneAccordion(forceExpand) {
+    const accordion = document.getElementById('bulkDropZoneAccordion');
+    const statusText = document.getElementById('dropzoneAccordionStatus');
+    if (!accordion) return;
+
+    const isCollapsed = accordion.classList.contains('collapsed');
+    const shouldExpand = (typeof forceExpand === 'boolean') ? forceExpand : isCollapsed;
+
+    if (shouldExpand) {
+        accordion.classList.remove('collapsed');
+        if (statusText) statusText.innerText = 'Collapse';
+    } else {
+        accordion.classList.add('collapsed');
+        if (statusText) statusText.innerText = 'Expand';
+    }
+}
+
 // Initialize Drag & Drop
 function initDragAndDrop() {
+    const accordion = document.getElementById('bulkDropZoneAccordion');
     const dropzone = document.getElementById('bulkDropZone');
     const fileInput = document.getElementById('bulkFileInput');
     const folderInput = document.getElementById('bulkFolderInput');
 
     if (!dropzone) return;
 
-    ['dragenter', 'dragover'].forEach(eventName => {
-        dropzone.addEventListener(eventName, (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dropzone.classList.add('drag-over');
-        });
-    });
+    const dragContainers = [accordion, dropzone].filter(Boolean);
 
-    ['dragleave', 'drop'].forEach(eventName => {
-        dropzone.addEventListener(eventName, (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            dropzone.classList.remove('drag-over');
-        });
-    });
-
-    dropzone.addEventListener('drop', async (e) => {
-        const items = e.dataTransfer.items;
-        let files = [];
-
-        if (items && items.length > 0) {
-            for (let i = 0; i < items.length; i++) {
-                const item = items[i];
-                if (item.webkitGetAsEntry) {
-                    const entry = item.webkitGetAsEntry();
-                    if (entry) {
-                        const scanned = await scanFilesFromEntry(entry);
-                        files = files.concat(scanned);
-                        continue;
-                    }
+    dragContainers.forEach(container => {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            container.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (accordion) {
+                    accordion.classList.add('drag-over');
+                    toggleDropzoneAccordion(true);
                 }
-                const file = item.getAsFile();
-                if (file) files.push(file);
-            }
-        } else if (e.dataTransfer.files) {
-            files = Array.from(e.dataTransfer.files);
-        }
+            });
+        });
 
-        if (files.length > 0) {
-            handleBatchFiles(files);
-        }
+        ['dragleave', 'drop'].forEach(eventName => {
+            container.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (accordion) accordion.classList.remove('drag-over');
+            });
+        });
+
+        container.addEventListener('drop', async (e) => {
+            const items = e.dataTransfer.items;
+            let files = [];
+
+            if (items && items.length > 0) {
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    if (item.webkitGetAsEntry) {
+                        const entry = item.webkitGetAsEntry();
+                        if (entry) {
+                            const scanned = await scanFilesFromEntry(entry);
+                            files = files.concat(scanned);
+                            continue;
+                        }
+                    }
+                    const file = item.getAsFile();
+                    if (file) files.push(file);
+                }
+            } else if (e.dataTransfer.files) {
+                files = Array.from(e.dataTransfer.files);
+            }
+
+            if (files.length > 0) {
+                toggleDropzoneAccordion(true);
+                handleBatchFiles(files);
+            }
+        });
     });
 
     // Clicking anywhere on dropzone (except inner buttons/inputs) opens file dialog
@@ -714,6 +741,7 @@ function initDragAndDrop() {
     if (fileInput) {
         fileInput.addEventListener('change', (e) => {
             if (e.target.files && e.target.files.length > 0) {
+                toggleDropzoneAccordion(true);
                 handleBatchFiles(Array.from(e.target.files));
             }
             e.target.value = '';
@@ -723,6 +751,7 @@ function initDragAndDrop() {
     if (folderInput) {
         folderInput.addEventListener('change', (e) => {
             if (e.target.files && e.target.files.length > 0) {
+                toggleDropzoneAccordion(true);
                 handleBatchFiles(Array.from(e.target.files));
             }
             e.target.value = '';
