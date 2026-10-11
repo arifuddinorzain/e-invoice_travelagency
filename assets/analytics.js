@@ -177,6 +177,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Automatically sync live records from Neon Cloud DB on page load
     syncFromNeonCloud({ isAutoSync: true });
+
+    // Handle Escape key to close open modals
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeInvoiceModal();
+            closeApiConfigModal();
+        }
+    });
 });
 
 // Helper: Toast Notifications
@@ -1509,82 +1517,140 @@ async function softDeleteInvoice(id) {
 
 // Detail Modal
 function openInvoiceModal(id) {
-    const inv = parsedInvoices.find(i => i.id === id);
-    if (!inv) return;
-
-    const modal = document.getElementById('invoiceDetailModal');
-    const title = document.getElementById('modalInvoiceTitle');
-    const body = document.getElementById('modalInvoiceBody');
-
-    title.innerText = `Invoice Details: ${inv.invoiceNo}`;
-
-    let itemsHtml = '';
-    if (inv.raw?.items && inv.raw.items.length > 0) {
-        itemsHtml = inv.raw.items.map(it => `
-            <tr>
-                <td>${it.desc || '-'}</td>
-                <td class="text-center">${it.qty || 1} Pax</td>
-                <td class="text-end">${inv.symbol} ${parseFloat(it.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-                <td class="text-end">${inv.symbol} ${(parseFloat(it.price || 0) * parseInt(it.qty || 1)).toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
-            </tr>
-        `).join('');
+    const inv = parsedInvoices.find(i => i.id === id || i.invoiceNo === id || i.backendId == id || String(i.id) === String(id))
+             || filteredInvoices.find(i => i.id === id || i.invoiceNo === id || i.backendId == id || String(i.id) === String(id));
+    if (!inv) {
+        showToast("Invoice record not found.", "warning");
+        return;
     }
 
-    body.innerHTML = `
-        <div class="row g-3 mb-4">
-            <div class="col-md-6">
-                <div class="p-3 bg-light rounded border">
-                    <h6 class="fw-bold mb-2 text-primary"><i class="fa-solid fa-building"></i> Company & Customer</h6>
-                    <div><strong>Company:</strong> ${inv.companyName}</div>
-                    <div><strong>Customer:</strong> ${inv.customerName}</div>
-                    <div><strong>Consultant:</strong> ${inv.tripConsultant}</div>
+    const modal = document.getElementById('invoiceDetailModal');
+    if (!modal) return;
+    const title = document.getElementById('modalInvoiceTitle');
+    const body = document.getElementById('modalInvoiceBody');
+    const footer = document.getElementById('modalInvoiceFooter');
+
+    const invNo = inv.invoiceNo || 'N/A';
+    if (title) title.innerText = `Invoice Details: ${invNo}`;
+
+    // Collect all items and addons
+    const allItems = [];
+    if (Array.isArray(inv.raw?.items)) {
+        inv.raw.items.forEach(it => allItems.push({ ...it, itemCategory: 'Package' }));
+    }
+    if (Array.isArray(inv.raw?.addons)) {
+        inv.raw.addons.forEach(it => allItems.push({ ...it, itemCategory: 'Add-on' }));
+    }
+
+    const curSymbol = inv.symbol || inv.currency || 'RM';
+    let itemsHtml = '';
+
+    if (allItems.length > 0) {
+        itemsHtml = allItems.map(it => {
+            const price = parseFloat(String(it.price || 0).replace(/,/g, '')) || 0;
+            const qty = parseInt(it.qty || 1) || 1;
+            const total = price * qty;
+            const catBadge = it.itemCategory === 'Package' 
+                ? '<span class="badge bg-primary-subtle text-primary border border-primary-subtle">Package</span>'
+                : '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle">Add-on</span>';
+            return `
+                <tr>
+                    <td>
+                        <div class="fw-semibold text-dark">${it.desc || '-'}</div>
+                        ${it.viDesc ? `<div class="text-muted small fst-italic" style="font-size: 11.5px;">${it.viDesc}</div>` : ''}
+                    </td>
+                    <td class="text-center">${catBadge}</td>
+                    <td class="text-center fw-semibold">${qty} Pax</td>
+                    <td class="text-end font-monospace">${curSymbol} ${price.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                    <td class="text-end fw-bold font-monospace">${curSymbol} ${total.toLocaleString('en-US', { minimumFractionDigits: 2 })}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    const st = (inv.status || 'unpaid').toLowerCase();
+    const statusBadgeClass = st === 'paid' ? 'bg-success' : (st === 'partial' ? 'bg-warning text-dark' : 'bg-danger');
+    const statusText = st.toUpperCase();
+
+    if (body) {
+        body.innerHTML = `
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded border h-100">
+                        <h6 class="fw-bold mb-2 text-primary d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-building"></i> Company & Customer
+                        </h6>
+                        <div class="small mb-1"><strong>Company:</strong> <span class="text-dark">${inv.companyName || '-'}</span></div>
+                        <div class="small mb-1"><strong>Customer:</strong> <span class="text-dark">${inv.customerName || '-'}</span></div>
+                        <div class="small"><strong>Consultant:</strong> <span class="text-dark">${inv.tripConsultant || '-'}</span></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 bg-light rounded border h-100">
+                        <h6 class="fw-bold mb-2 text-primary d-flex align-items-center gap-2">
+                            <i class="fa-solid fa-calendar-days"></i> Booking & Schedule
+                        </h6>
+                        <div class="small mb-1"><strong>Trip:</strong> <span class="text-dark">${inv.tripName || '-'}</span></div>
+                        <div class="small mb-1"><strong>Travel Date:</strong> <span class="text-dark">${inv.tripDate || 'N/A'}</span></div>
+                        <div class="small"><strong>Invoice Date:</strong> <span class="text-dark">${inv.invoiceDate || '-'}</span> <span class="text-muted">(Due: ${inv.dueDate || '-'})</span></div>
+                    </div>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="p-3 bg-light rounded border">
-                    <h6 class="fw-bold mb-2 text-primary"><i class="fa-solid fa-calendar-days"></i> Booking & Schedule</h6>
-                    <div><strong>Trip:</strong> ${inv.tripName}</div>
-                    <div><strong>Travel Date:</strong> ${inv.tripDate || 'N/A'}</div>
-                    <div><strong>Invoice Date:</strong> ${inv.invoiceDate} (Due: ${inv.dueDate})</div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0 text-secondary"><i class="fa-solid fa-list-check me-1"></i> Itemized Breakdown</h6>
+                <span class="badge bg-secondary">${allItems.length} Line Item(s)</span>
+            </div>
+            <div class="table-responsive border rounded mb-4" style="max-height: 240px; overflow-y: auto;">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>Description</th>
+                            <th class="text-center">Type</th>
+                            <th class="text-center">Qty</th>
+                            <th class="text-end">Unit Price</th>
+                            <th class="text-end">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsHtml || '<tr><td colspan="5" class="text-center py-3 text-muted">No items recorded</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded border">
+                <div>
+                    <div class="mb-1"><strong>Status:</strong> <span class="badge ${statusBadgeClass}">${statusText}</span></div>
+                    <div class="small text-muted">Currency: <strong class="text-dark">${inv.currency || 'RM'}</strong></div>
+                </div>
+                <div class="text-end">
+                    <div class="small text-secondary mb-1">Subtotal: <strong class="text-dark">${curSymbol} ${(parseFloat(inv.subtotal) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></div>
+                    <div class="small text-success mb-1">Deposit Paid: <strong>${curSymbol} ${(parseFloat(inv.depositPaid) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></div>
+                    <div class="h6 mb-0 text-danger fw-bold">Balance Due: ${curSymbol} ${(parseFloat(inv.balanceDue) || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
                 </div>
             </div>
-        </div>
+        `;
+    }
 
-        <h6 class="fw-bold mb-2">Itemized Breakdown</h6>
-        <div class="table-responsive border rounded mb-3">
-            <table class="table table-sm mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th>Description</th>
-                        <th class="text-center">Qty</th>
-                        <th class="text-end">Unit Price</th>
-                        <th class="text-end">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${itemsHtml || '<tr><td colspan="4" class="text-center py-2 text-muted">No items recorded</td></tr>'}
-                </tbody>
-            </table>
-        </div>
-
-        <div class="d-flex justify-content-between p-3 bg-light rounded border">
-            <div>
-                <div><strong>Status:</strong> <span class="text-uppercase fw-bold">${inv.status}</span></div>
-                <div><strong>Currency:</strong> ${inv.currency}</div>
-            </div>
-            <div class="text-end">
-                <div>Subtotal: <strong>${inv.symbol} ${inv.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></div>
-                <div class="text-success">Deposit Paid: <strong>${inv.symbol} ${inv.depositPaid.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></div>
-                <div class="text-danger">Balance Due: <strong>${inv.symbol} ${inv.balanceDue.toLocaleString('en-US', { minimumFractionDigits: 2 })}</strong></div>
-            </div>
-        </div>
-    `;
+    if (footer) {
+        footer.innerHTML = `
+            <button type="button" class="btn btn-primary btn-sm px-3 fw-bold" onclick="closeInvoiceModal(); openInGenerator('${inv.id || inv.invoiceNo}')">
+                <i class="fa-solid fa-pen-to-square me-1"></i> Edit in Generator
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm px-3" onclick="closeInvoiceModal()">Close</button>
+        `;
+    }
 
     modal.classList.add('active');
+    modal.style.display = 'flex';
 }
 
 function closeInvoiceModal() {
-    document.getElementById('invoiceDetailModal')?.classList.remove('active');
+    const modal = document.getElementById('invoiceDetailModal');
+    if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+    }
 }
 
 async function openInGenerator(id) {

@@ -872,7 +872,7 @@ body {
 }
 
 .modal-overlay.active {
-    display: flex;
+    display: flex !important;
 }
 
 .modal-content-card {
