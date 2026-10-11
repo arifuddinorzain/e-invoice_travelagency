@@ -12,6 +12,7 @@ let currentSortColumn = 'date';
 let currentSortAsc = false;
 let currentPage = 1;
 const rowsPerPage = 10;
+let selectedInvoiceIds = new Set();
 
 // Default Exchange Rates (Matching Generator)
 const currencyRates = {
@@ -1316,7 +1317,9 @@ function renderTable() {
     document.getElementById('btnNextPage').disabled = (currentPage >= totalPages);
 
     if (pagedList.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">No invoices found matching current filter or search criteria.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="text-center py-4 text-muted">No invoices found matching current filter or search criteria.</td></tr>`;
+        updateMasterCheckbox([]);
+        updateBulkActionsUI();
         return;
     }
 
@@ -1327,9 +1330,17 @@ function renderTable() {
         const total = isBaseMYR ? inv.normalizedSubtotalMYR : inv.subtotal;
         const dep = isBaseMYR ? inv.normalizedDepositMYR : inv.depositPaid;
         const bal = isBaseMYR ? inv.normalizedBalanceMYR : inv.balanceDue;
+        const isSelected = selectedInvoiceIds.has(inv.id);
 
         return `
-            <tr>
+            <tr class="${isSelected ? 'row-selected' : ''}">
+                <td class="select-col" style="text-align: center;" onclick="event.stopPropagation();">
+                    <input type="checkbox" class="row-select-checkbox"
+                           data-id="${inv.id}"
+                           ${isSelected ? 'checked' : ''}
+                           onchange="onRowCheckboxChange('${inv.id}', this.checked)"
+                           title="Select invoice ${inv.invoiceNo}">
+                </td>
                 <td class="fw-bold text-primary">${inv.invoiceNo}</td>
                 <td>${inv.invoiceDate}</td>
                 <td>
@@ -1363,6 +1374,169 @@ function renderTable() {
             </tr>
         `;
     }).join('');
+
+    updateMasterCheckbox(pagedList);
+    updateBulkActionsUI();
+}
+
+// Master Checkbox & Selection Handlers
+function updateMasterCheckbox(pagedList) {
+    const master = document.getElementById('selectAllCheckbox');
+    if (!master) return;
+
+    if (!pagedList || pagedList.length === 0) {
+        master.checked = false;
+        master.indeterminate = false;
+        return;
+    }
+
+    const selectedOnPage = pagedList.filter(inv => selectedInvoiceIds.has(inv.id)).length;
+
+    if (selectedOnPage === pagedList.length && pagedList.length > 0) {
+        master.checked = true;
+        master.indeterminate = false;
+    } else if (selectedOnPage > 0) {
+        master.checked = false;
+        master.indeterminate = true;
+    } else {
+        master.checked = false;
+        master.indeterminate = false;
+    }
+}
+
+function onRowCheckboxChange(id, isChecked) {
+    if (isChecked) {
+        selectedInvoiceIds.add(id);
+    } else {
+        selectedInvoiceIds.delete(id);
+    }
+    renderTable();
+}
+
+function toggleSelectAll(isChecked) {
+    const query = (document.getElementById('tableSearchInput')?.value || '').toLowerCase().trim();
+    let displayList = filteredInvoices.filter(inv => {
+        if (!query) return true;
+        return inv.invoiceNo.toLowerCase().includes(query) ||
+               inv.customerName.toLowerCase().includes(query) ||
+               inv.tripName.toLowerCase().includes(query) ||
+               inv.tripConsultant.toLowerCase().includes(query);
+    });
+
+    displayList.sort((a, b) => {
+        let vA = a[currentSortColumn];
+        let vB = b[currentSortColumn];
+        if (typeof vA === 'string') vA = vA.toLowerCase();
+        if (typeof vB === 'string') vB = vB.toLowerCase();
+        if (vA < vB) return currentSortAsc ? -1 : 1;
+        if (vA > vB) return currentSortAsc ? 1 : -1;
+        return 0;
+    });
+
+    const totalItems = displayList.length;
+    const totalPages = Math.ceil(totalItems / rowsPerPage) || 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+    const startIdx = (currentPage - 1) * rowsPerPage;
+    const pagedList = displayList.slice(startIdx, startIdx + rowsPerPage);
+
+    pagedList.forEach(inv => {
+        if (isChecked) {
+            selectedInvoiceIds.add(inv.id);
+        } else {
+            selectedInvoiceIds.delete(inv.id);
+        }
+    });
+
+    renderTable();
+}
+
+function clearRowSelection() {
+    selectedInvoiceIds.clear();
+    renderTable();
+}
+
+function updateBulkActionsUI() {
+    const bar = document.getElementById('bulkActionsBar');
+    const countSpan = document.getElementById('bulkSelectedCount');
+    const count = selectedInvoiceIds.size;
+    if (bar && countSpan) {
+        if (count > 0) {
+            countSpan.innerText = count;
+            bar.style.display = 'inline-flex';
+        } else {
+            bar.style.display = 'none';
+        }
+    }
+}
+
+// Bulk Soft Delete Invoices Action
+async function deleteSelectedInvoices() {
+    const count = selectedInvoiceIds.size;
+    if (count === 0) return;
+
+    if (!confirm(`Are you sure you want to delete ${count} selected invoice${count > 1 ? 's' : ''}? This will soft-delete them from the Neon Database.`)) {
+        return;
+    }
+
+    showLoadingScreen("Deleting Selected Invoices...", `Removing ${count} invoices from Neon Database`);
+
+    const selectedKeys = [];
+    selectedInvoiceIds.forEach(id => {
+        const inv = parsedInvoices.find(i => i.id === id || i.invoiceNo === id || i.backendId == id);
+        if (inv) {
+            selectedKeys.push(inv.backendId || inv.invoiceNo || inv.id);
+        } else {
+            selectedKeys.push(id);
+        }
+    });
+
+    try {
+        const apiBase = getApiBaseUrl();
+        if (apiBase) {
+            const response = await fetch(`${apiBase}/invoices/bulk-delete`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ ids: selectedKeys })
+            });
+
+            if (response.ok) {
+                const resJson = await response.json().catch(() => ({}));
+                console.log("Bulk delete response:", resJson);
+            } else {
+                console.warn("Bulk delete endpoint returned", response.status, "- falling back to individual deletes");
+                await Promise.allSettled(selectedKeys.map(k => 
+                    fetch(`${apiBase}/invoices/${encodeURIComponent(k)}`, {
+                        method: 'DELETE',
+                        headers: { 'Accept': 'application/json' }
+                    })
+                ));
+            }
+        }
+    } catch (err) {
+        console.warn("Backend bulk delete error:", err);
+    } finally {
+        // Remove deleted invoices from in-memory records
+        const deletedIdSet = new Set(selectedInvoiceIds);
+        parsedInvoices = parsedInvoices.filter(i => !deletedIdSet.has(i.id) && !deletedIdSet.has(i.invoiceNo) && !deletedIdSet.has(i.backendId));
+        filteredInvoices = filteredInvoices.filter(i => !deletedIdSet.has(i.id) && !deletedIdSet.has(i.invoiceNo) && !deletedIdSet.has(i.backendId));
+
+        // Clear selection
+        selectedInvoiceIds.clear();
+
+        // Save updated state to storage
+        localStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
+        sessionStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
+
+        // Refresh KPIs, charts, and table
+        populateFilterDropdowns();
+        updateDashboard();
+
+        hideLoadingScreen();
+        showToast(`🗑️ ${count} invoice${count > 1 ? 's' : ''} deleted successfully.`, 'success', 3500);
+    }
 }
 
 // Table Sorting Trigger
@@ -1500,6 +1674,7 @@ async function softDeleteInvoice(id) {
         // Remove from in-memory records
         parsedInvoices = parsedInvoices.filter(i => i.id !== id);
         filteredInvoices = filteredInvoices.filter(i => i.id !== id);
+        selectedInvoiceIds.delete(id);
 
         // Save updated state to storage
         localStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
@@ -1968,6 +2143,8 @@ async function syncFromNeonCloud(options = {}) {
             });
 
             parsedInvoices = cloudRecords;
+            const existingIds = new Set(cloudRecords.map(r => r.id));
+            selectedInvoiceIds = new Set([...selectedInvoiceIds].filter(id => existingIds.has(id)));
             localStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
             sessionStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
             populateFilterDropdowns();

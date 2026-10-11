@@ -386,6 +386,57 @@ class InvoiceController extends Controller
     }
 
     /**
+     * Bulk Soft Delete Multiple Invoices.
+     */
+    public function bulkDelete(Request $request)
+    {
+        $rawJson = json_decode($request->getContent(), true) ?: [];
+        $ids = $request->input('ids') ?? $request->json('ids') ?? $rawJson['ids'] ?? [];
+
+        if (empty($ids) || !is_array($ids)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No invoice IDs provided for deletion.'
+            ], 400);
+        }
+
+        $numericIds = [];
+        $invoiceNos = [];
+
+        foreach ($ids as $id) {
+            if (is_numeric($id)) {
+                $numericIds[] = (int) $id;
+            } else {
+                $invoiceNos[] = (string) $id;
+            }
+        }
+
+        $query = Invoice::query();
+        $query->where(function ($q) use ($numericIds, $invoiceNos) {
+            $hasCondition = false;
+            if (!empty($numericIds)) {
+                $q->whereIn('id', $numericIds);
+                $hasCondition = true;
+            }
+            if (!empty($invoiceNos)) {
+                if ($hasCondition) {
+                    $q->orWhereIn('invoice_no', $invoiceNos);
+                } else {
+                    $q->whereIn('invoice_no', $invoiceNos);
+                }
+            }
+        });
+
+        $deletedCount = $query->delete();
+
+        return response()->json([
+            'success' => true,
+            'deleted_count' => $deletedCount,
+            'message' => "Successfully soft deleted {$deletedCount} invoices."
+        ]);
+    }
+
+    /**
      * Bulk Import Multiple Invoices into Neon DB.
      */
     public function bulkImport(Request $request)

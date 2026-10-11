@@ -649,6 +649,73 @@ body {
     flex-wrap: wrap;
 }
 
+/* Bulk Actions Toolbar */
+.bulk-actions-toolbar {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    padding: 3px 10px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(239, 68, 68, 0.08);
+    animation: fadeInSlide 0.2s ease-in-out;
+}
+
+@keyframes fadeInSlide {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.bulk-selected-badge {
+    font-size: 12px;
+    font-weight: 700;
+    color: #b91c1c;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.bulk-delete-btn {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 4px 11px;
+    border-radius: 6px;
+    background-color: #dc2626 !important;
+    border-color: #dc2626 !important;
+    color: #ffffff !important;
+    display: inline-flex;
+    align-items: center;
+    transition: all 0.15s ease;
+}
+
+.bulk-delete-btn:hover {
+    background-color: #b91c1c !important;
+    border-color: #b91c1c !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(220, 38, 38, 0.3);
+}
+
+.bulk-cancel-btn {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    line-height: 1.4;
+    color: #64748b;
+    border-color: #cbd5e1;
+}
+
+.bulk-cancel-btn:hover {
+    background-color: #f1f5f9;
+    color: #334155;
+}
+
 .search-input-wrap {
     position: relative;
 }
@@ -718,6 +785,24 @@ body {
 
 .analytics-table tbody tr:hover {
     background: #fafbfd;
+}
+
+.analytics-table tbody tr.row-selected {
+    background-color: #eff6ff !important;
+}
+
+.analytics-table tbody tr.row-selected:hover {
+    background-color: #dbeafe !important;
+}
+
+.row-select-checkbox {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    accent-color: var(--primary);
+    border-radius: 4px;
+    vertical-align: middle;
+    margin: 0;
 }
 
 .analytics-table tbody td {

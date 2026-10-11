@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 
     <!-- Custom Analytics Stylesheet -->
-    <link rel="stylesheet" href="assets/analytics.css?v=11">
+    <link rel="stylesheet" href="assets/analytics.css?v=12">
 
     <!-- Chart.js & PDF.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -371,6 +371,20 @@
                         <i class="fa-solid fa-table-list"></i> Parsed Invoices Records
                     </div>
                     <div class="table-controls">
+                        <!-- Bulk Actions Toolbar (Visible when 1 or more rows are selected) -->
+                        <div id="bulkActionsBar" class="bulk-actions-toolbar" style="display: none;">
+                            <span class="bulk-selected-badge">
+                                <i class="fa-solid fa-circle-check"></i>
+                                <span id="bulkSelectedCount">0</span> selected
+                            </span>
+                            <button type="button" class="btn btn-danger btn-sm bulk-delete-btn" id="btnDeleteSelected" onclick="deleteSelectedInvoices()">
+                                <i class="fa-solid fa-trash-can me-1"></i> Delete Selected
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm bulk-cancel-btn" onclick="clearRowSelection()" title="Clear selection">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+
                         <div class="search-input-wrap">
                             <i class="fa-solid fa-magnifying-glass"></i>
                             <input type="text" id="tableSearchInput" placeholder="Search invoice, client, trip...">
@@ -382,6 +396,9 @@
                     <table class="analytics-table">
                         <thead>
                             <tr>
+                                <th class="select-col" style="width: 44px; text-align: center; cursor: default;" onclick="event.stopPropagation();">
+                                    <input type="checkbox" id="selectAllCheckbox" class="row-select-checkbox" onchange="toggleSelectAll(this.checked)" title="Select all on this page">
+                                </th>
                                 <th onclick="sortTable('invoiceNo')">Invoice # <i class="fa-solid fa-sort ms-1"></i>
                                 </th>
                                 <th onclick="sortTable('invoiceDate')">Date <i class="fa-solid fa-sort ms-1"></i></th>
@@ -459,7 +476,7 @@
     <div id="toastContainer" class="custom-toast-container"></div>
 
     <!-- Analytics Engine Script -->
-    <script src="assets/analytics.js?v=21"></script>
+    <script src="assets/analytics.js?v=22"></script>
 </body>
 
 </html>

@@ -19,6 +19,9 @@ Route::get('/analytics', [InvoiceController::class, 'analytics']);
 // Bulk Import from PDF/JSON batch parser
 Route::post('/invoices/bulk', [InvoiceController::class, 'bulkImport']);
 
+// Bulk Delete Invoices
+Route::post('/invoices/bulk-delete', [InvoiceController::class, 'bulkDelete']);
+
 // Update Invoice Status
 Route::patch('/invoices/{id}/status', [InvoiceController::class, 'updateStatus']);
 
