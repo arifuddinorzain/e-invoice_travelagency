@@ -927,7 +927,7 @@ function saveTranslationCache() {
         if (typeof localStorage !== 'undefined') {
             localStorage.setItem("itemTranslationCache", JSON.stringify(itemTranslationCache));
         }
-    } catch (e) {}
+    } catch (e) { }
 }
 
 const activeTranslationTimers = new Map();
@@ -991,7 +991,7 @@ function translateToVietnamese(rawText) {
         [/\bsun\s*world(?:\s*ticket)?\b/gi, 'Vé tham quan Sun World'],
         [/\bgolden\s*bridge\b/gi, 'Cầu Vàng (Bà Nà Hills)'],
         [/\bba\s*na\s*hills\b/gi, 'Bà Nà Hills'],
-        
+
         [/\bfansipan\s*(?:cable\s*car(?:\s*ticket)?\s*\+\s*(?:peak|muong\s*hoa)\s*train|(?:peak|muong\s*hoa)\s*train\s*\+\s*cable\s*car)\b/gi, 'Vé Cáp treo Fansipan + Tàu hỏa leo núi'],
         [/\bfansipan\s*cable\s*car(?:\s*ticket)?\b/gi, 'Vé Cáp treo Fansipan'],
         [/\b(?:fansipan\s*)?(?:peak\s*train|muong\s*hoa\s*train)\b/gi, 'Vé Tàu hỏa Mường Hoa / Đỉnh Fansipan'],
@@ -1047,7 +1047,7 @@ function translateToVietnamese(rawText) {
         [/\bprivate\s*(?:car|van|bus|coach)\b/gi, 'Xe riêng du lịch'],
         [/\blimousine\s*(?:dcar|car|bus)?\b/gi, 'Xe Limousine Dcar cao cấp'],
         [/\bsleeper\s*bus(?:\s*ticket)?\b/gi, 'Vé xe giường nằm'],
-        
+
         [/\bairport\s*transfer\s*(?:\(?\s*)?(?:round\s*trip|2\s*ways?|two\s*ways?)(?:\s*\)?)\b/gi, 'Xe đưa đón sân bay (Khứ hồi)'],
         [/\bairport\s*transfer\s*(?:\(?\s*)?(?:one\s*way|1\s*way)(?:\s*\)?)\b/gi, 'Xe đón/tiễn sân bay (Một chiều)'],
         [/\bairport\s*transfer\b/gi, 'Xe đưa đón sân bay'],
@@ -2704,11 +2704,6 @@ function downloadPDF() {
     const invoice = document.getElementById("invoiceToDownload");
     const invNumber = document.getElementById("invoiceNo")?.value.trim() || "invoice";
 
-    // Count package item rows and add-on rows to determine single vs multi-page
-    const pkgRowCount = document.querySelectorAll("#invoiceItems .item-row").length;
-    const addonRowCount = document.querySelectorAll("#addonItems .item-row").length;
-    const isSinglePageInvoice = (pkgRowCount + addonRowCount) <= 7;
-
     const opt = {
         margin: 0,
         filename: `${invNumber}.pdf`,
@@ -2756,17 +2751,50 @@ function downloadPDF() {
                     clonedInvoice.style.boxShadow = 'none';
                     clonedInvoice.style.border = 'none';
                     clonedInvoice.style.boxSizing = 'border-box';
+
+                    // Check if invoice spans multiple pages
+                    const actualHeight = clonedInvoice.scrollHeight || clonedInvoice.offsetHeight;
+                    const isMultiPage = actualHeight > 1120;
+
+                    if (!isMultiPage) {
+                        clonedInvoice.style.height = '1120px';
+                        clonedInvoice.style.maxHeight = '1120px';
+                        clonedInvoice.style.overflow = 'hidden';
+                    } else {
+                        clonedInvoice.style.height = 'auto';
+                        clonedInvoice.style.minHeight = 'auto';
+                        clonedInvoice.style.overflow = 'visible';
+                    }
                 }
 
-                // Ensure body/html have no extra spacing
+                // Ensure Page 2 and subsequent pages have 100px distance from the top
+                const clonedBottomBlock = clonedDoc.querySelector('.invoice-bottom-block');
+                if (clonedBottomBlock) {
+                    const actualHeight = clonedInvoice ? (clonedInvoice.scrollHeight || clonedInvoice.offsetHeight) : 0;
+                    if (actualHeight > 1120) {
+                        clonedBottomBlock.style.pageBreakBefore = 'always';
+                        clonedBottomBlock.style.breakBefore = 'page';
+                        clonedBottomBlock.style.setProperty('padding-top', '100px', 'important');
+                        clonedBottomBlock.style.setProperty('padding-bottom', '20px', 'important');
+                    } else {
+                        clonedBottomBlock.style.setProperty('padding-top', '8px', 'important');
+                        clonedBottomBlock.style.setProperty('padding-bottom', '8px', 'important');
+                    }
+                }
+
+                // Ensure body/html have no extra spacing causing blank pages
                 clonedDoc.body.style.margin = '0';
                 clonedDoc.body.style.padding = '0';
+                clonedDoc.body.style.backgroundColor = '#ffffff';
                 clonedDoc.documentElement.style.margin = '0';
                 clonedDoc.documentElement.style.padding = '0';
                 clonedDoc.documentElement.style.fontSize = '16px';
             }
         },
-        pagebreak: { mode: ['css', 'legacy'], avoid: ['tr', '.cat-row', '.bank-info-box', '.sig-box'] },
+        pagebreak: {
+            mode: ['css', 'legacy'],
+            avoid: ['tr', '.cat-row', '.invoice-bottom-block', '.summary-area', '.footer-signature-area', '.bank-info-box', '.sig-box']
+        },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
@@ -2786,11 +2814,6 @@ function downloadPDF() {
             }
         } catch (e) {
             console.warn("Could not set PDF metadata:", e);
-        }
-
-        const totalPages = pdf.internal.getNumberOfPages();
-        if (totalPages === 2 && isSinglePageInvoice) {
-            pdf.deletePage(2);
         }
     }).save()
         .then(() => {
@@ -3353,7 +3376,7 @@ async function saveToNeonCloud() {
                         console.warn("Analytics cache sync note:", syncErr);
                     }
                 }
-            } catch (e) {}
+            } catch (e) { }
             showToast(`✅ Invoice ${data.invoiceNo || ''} saved to Neon Cloud DB!`, "success", 5000);
         } else if (result.status === 'pending_configuration') {
             showToast("Database connection pending configuration in backend/.env", "warning", 6000);
