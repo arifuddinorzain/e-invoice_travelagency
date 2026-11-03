@@ -875,80 +875,8 @@ function getHarareiDanang5dAdultPrice(pax) {
 
 function getFocCount(customerKeyOrName, tripName, qty) {
     const q = parseInt(qty) || 0;
-    if (q <= 0) return 0;
-    const cust = (customerKeyOrName || "").toUpperCase();
-    const cleanTrip = (tripName || "").toLowerCase().replace(/[^a-z0-9]/g, '');
-
-    if (cust.includes("JOM") || cust.includes("HARAREI") || cust === "HR" || cust.includes("MOOD") || cust === "MD" || cust.includes("FAIRY") || cust.includes("FAIRYS") || cust === "FRY") {
-        if (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine")) {
-            return 0; // No FOC for HCM
-        }
-        if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
-            if (cleanTrip.includes("5h4m")) {
-                if (q >= 32) return 2;
-                if (q >= 15) return 1;
-                return 0;
-            } else {
-                if (q >= 32) return 2;
-                if (q >= 16) return 1;
-                return 0;
-            }
-        }
-        if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
-            if (q >= 30) return 2;
-            if (q >= 15) return 1;
-            return 0;
-        }
-        if (cleanTrip.includes("6h5m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
-            if (q >= 15) return 1;
-            return 0;
-        }
-        if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong"))) {
-            if (q >= 32) return 2;
-            if (q >= 16) return 1;
-            return 0;
-        }
-        if (q >= 32) return 2;
-        if (q >= 16) return 1;
-        return 0;
-    }
-
-    if (cust.includes("LANTERA") || cust === "LTR") {
-        if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
-            if (q >= 32) return 2;
-            if (q >= 16) return 1;
-            return 0;
-        }
-        if (cleanTrip.includes("4h3m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
-            if (q >= 16) return 1;
-            return 0;
-        }
-        if (cleanTrip.includes("phuquoc") || cleanTrip.includes("phu") || cleanTrip.includes("quoc")) {
-            if (q >= 32) return 2;
-            if (q >= 16) return 1;
-            return 0;
-        }
-        if (cleanTrip.includes("danang") || cleanTrip.includes("hoian")) {
-            if (q >= 16) return 1;
-            return 0;
-        }
-        if (cleanTrip.includes("hanoi") || cleanTrip.includes("sapa") || cleanTrip.includes("halong")) {
-            if (q >= 32) return 2;
-            if (q >= 16) return 1;
-            return 0;
-        }
-        if (q >= 32) return 2;
-        if (q >= 16) return 1;
-        return 0;
-    }
-
-    if (cust.includes("MUSLIM") || cust.includes("TRAVELBUG") || cust === "MTB") {
-        if (q >= 15) return 1;
-        return 0;
-    }
-
-    // Default: If user did not choose an existing company name with FOC rules, do not auto FOC
-    return 0;
+    if (q < 15) return 0;
+    return Math.floor(q / 15);
 }
 
 function escapeHtml(str) {
