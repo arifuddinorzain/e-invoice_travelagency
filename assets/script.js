@@ -186,7 +186,57 @@ const customerPresets = {
         name: "FAIRYS HOLIDAY SDN BHD",
         prefix: "FRY",
         address: "24-2, Jalan Tanjung SD 13/1, Bandar Sri Damansara, 52200 Kuala Lumpur, Wilayah Persekutuan Kuala Lumpur, Malaysia",
-        packages: []
+        trips: [
+            "5H4M HCM-DALAT-MUINE",
+            "4H3M HCM-DALAT-MUINE",
+            "4H3M PHU QUOC",
+            "5H4M PHU QUOC",
+            "4H3M DANANG",
+            "5H4M DANANG",
+            "5H4M HANOI SAPA HALONG BAY (DAY TRIP)",
+            "6H5M HANOI SAPA HALONG BAY (DAY TRIP)"
+        ],
+        packages: [
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M HCM-DALAT-MUINE", price: 750.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M HCM-DALAT-MUINE", price: 562.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M HCM-DALAT-MUINE", price: 375.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M HCM-DALAT-MUINE", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M HCM-DALAT-MUINE", price: 650.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M HCM-DALAT-MUINE", price: 487.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M HCM-DALAT-MUINE", price: 325.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M HCM-DALAT-MUINE", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M PHU QUOC", price: 750.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M PHU QUOC", price: 562.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M PHU QUOC", price: 375.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M PHU QUOC", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M PHU QUOC", price: 1250.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M PHU QUOC", price: 937.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M PHU QUOC", price: 625.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M PHU QUOC", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "4H3M DANANG", price: 800.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "4H3M DANANG", price: 600.00 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "4H3M DANANG", price: 400.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "4H3M DANANG", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M DANANG", price: 1100.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M DANANG", price: 825.00 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M DANANG", price: 550.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M DANANG", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1550.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1162.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 775.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "5H4M HANOI SAPA HALONG BAY (DAY TRIP)", price: 0.00 },
+
+            { name: "GROUND PACKAGE (ADULT)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1850.00 },
+            { name: "GROUND PACKAGE (CHILD WITH BED)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 1387.50 },
+            { name: "GROUND PACKAGE (CHILD NO BED)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 925.00 },
+            { name: "GROUND PACKAGE (INFANT)", trip: "6H5M HANOI SAPA HALONG BAY (DAY TRIP)", price: 0.00 }
+        ]
     },
     "HARAREI TRAVEL": {
         name: "HARAREI TRAVEL AND TOURS SDN BHD",
@@ -519,7 +569,7 @@ function selectTripNameOption(itemEl, name) {
         }
     });
 
-    syncChildPackagePrices();
+    syncChildPackagePrices(null, true);
     updatePackagePresetUI();
     updateInvoice();
 }
@@ -829,7 +879,7 @@ function getFocCount(customerKeyOrName, tripName, qty) {
     const cust = (customerKeyOrName || "").toUpperCase();
     const cleanTrip = (tripName || "").toLowerCase().replace(/[^a-z0-9]/g, '');
 
-    if (cust.includes("JOM") || cust.includes("HARAREI") || cust === "HR" || cust.includes("MOOD") || cust === "MD") {
+    if (cust.includes("JOM") || cust.includes("HARAREI") || cust === "HR" || cust.includes("MOOD") || cust === "MD" || cust.includes("FAIRY") || cust.includes("FAIRYS") || cust === "FRY") {
         if (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine")) {
             return 0; // No FOC for HCM
         }
@@ -1308,7 +1358,7 @@ function calculateDynamicAdultPrice(tripName, pax, customCustomer = "") {
 
     let adultPrice = null;
 
-    if (cust.includes("HARAREI") || cust === "HR" || cust.includes("MOOD") || cust === "MD") {
+    if (cust.includes("HARAREI") || cust === "HR" || cust.includes("MOOD") || cust === "MD" || cust.includes("FAIRY") || cust.includes("FAIRYS") || cust === "FRY") {
         // HARAREI TRAVEL & MOOD TRAVEL
         if (cleanTrip.includes("5h4m") && (cleanTrip.includes("hcm") || cleanTrip.includes("dalat") || cleanTrip.includes("muine"))) {
             adultPrice = getJomHcm5dAdultPrice(pax);
@@ -1469,7 +1519,7 @@ function getCurrentAdultUnitPrice() {
     return 0;
 }
 
-function syncChildPackagePrices(overrideAdultPrice = null) {
+function syncChildPackagePrices(overrideAdultPrice = null, force = false) {
     const adultUnitPrice = (overrideAdultPrice !== null && !isNaN(overrideAdultPrice) && overrideAdultPrice > 0)
         ? overrideAdultPrice
         : getCurrentAdultUnitPrice();
@@ -1482,6 +1532,9 @@ function syncChildPackagePrices(overrideAdultPrice = null) {
         const priceInput = row.querySelector(".price");
         if (!priceInput) return;
 
+        // If user manually edited this price and we are not forcing reset, keep user edited value
+        if (!force && priceInput.dataset.userEdited === "true") return;
+
         const type = getPackageType(desc);
         if (type === "child_bed") {
             priceInput.value = formatPriceForInput(adultUnitPrice * 0.75);
@@ -1493,7 +1546,16 @@ function syncChildPackagePrices(overrideAdultPrice = null) {
     });
 }
 
+function onItemPriceInput(priceInput, isPackage = true) {
+    if (!priceInput) return;
+    priceInput.dataset.userEdited = "true";
+    if (isPackage) {
+        onPackagePriceInput(priceInput);
+    }
+}
+
 function onPackagePriceInput(priceInput) {
+    priceInput.dataset.userEdited = "true";
     const row = priceInput.closest(".item-row");
     if (!row) return;
     const descEl = row.querySelector(".desc");
@@ -1677,8 +1739,8 @@ function selectPackageOption(itemEl, name, price, trip = "") {
     const cur = document.getElementById("currency")?.value || "RM";
     const curInfo = defaultCurrencyRates[cur] || { noDecimals: false };
     const rate = currentAppliedRate || 1.0;
-
-    const type = getPackageType(name);
+    if (priceInput) delete priceInput.dataset.userEdited;
+const type = getPackageType(name);
     if (type === "adult") {
         if (qtyInput && (qtyInput.value === "1" || qtyInput.value === "") && defaultPax > 1) {
             qtyInput.value = defaultPax;
@@ -1760,16 +1822,16 @@ function onPackageDescInput(inputEl) {
             syncChildPackagePrices(adultPrice);
         } else if (type === "child_bed") {
             const adultPrice = getCurrentAdultUnitPrice();
-            if (priceInput && adultPrice > 0) {
+            if (priceInput && adultPrice > 0 && priceInput.dataset.userEdited !== "true") {
                 priceInput.value = formatPriceForInput(adultPrice * 0.75);
             }
         } else if (type === "child_nobed") {
             const adultPrice = getCurrentAdultUnitPrice();
-            if (priceInput && adultPrice > 0) {
+            if (priceInput && adultPrice > 0 && priceInput.dataset.userEdited !== "true") {
                 priceInput.value = formatPriceForInput(adultPrice * 0.50);
             }
         } else if (type === "infant") {
-            if (priceInput) {
+            if (priceInput && priceInput.dataset.userEdited !== "true") {
                 priceInput.value = formatPriceForInput(0);
             }
         }
@@ -1790,19 +1852,23 @@ function onPackageQtyChange(qtyInput) {
     if (descEl && priceEl && descEl.value) {
         const type = getPackageType(descEl.value);
         if (type === "adult") {
-            const dynamicPrice = calculateDynamicAdultPrice(tripName, qty, currentCust);
-            if (dynamicPrice !== null) {
-                const converted = getConvertedPrice(dynamicPrice);
-                priceEl.value = formatPriceForInput(converted);
+            if (priceEl.dataset.userEdited !== "true") {
+                const dynamicPrice = calculateDynamicAdultPrice(tripName, qty, currentCust);
+                if (dynamicPrice !== null) {
+                    const converted = getConvertedPrice(dynamicPrice);
+                    priceEl.value = formatPriceForInput(converted);
+                }
+                const newAdultPrice = parseFloat(priceEl.value) || 0;
+                syncChildPackagePrices(newAdultPrice);
             }
-            const newAdultPrice = parseFloat(priceEl.value) || 0;
-            syncChildPackagePrices(newAdultPrice);
         } else if (type === "child_bed" || type === "child_nobed" || type === "infant") {
-            const adultPrice = getCurrentAdultUnitPrice();
-            if (adultPrice > 0) {
-                if (type === "child_bed") priceEl.value = formatPriceForInput(adultPrice * 0.75);
-                else if (type === "child_nobed") priceEl.value = formatPriceForInput(adultPrice * 0.50);
-                else if (type === "infant") priceEl.value = formatPriceForInput(0);
+            if (priceEl.dataset.userEdited !== "true") {
+                const adultPrice = getCurrentAdultUnitPrice();
+                if (adultPrice > 0) {
+                    if (type === "child_bed") priceEl.value = formatPriceForInput(adultPrice * 0.75);
+                    else if (type === "child_nobed") priceEl.value = formatPriceForInput(adultPrice * 0.50);
+                    else if (type === "infant") priceEl.value = formatPriceForInput(0);
+                }
             }
         }
     }
@@ -2070,7 +2136,7 @@ function onCustomerPresetChange(val) {
                 }
             }
         });
-        syncChildPackagePrices();
+        syncChildPackagePrices(null, true);
     }
     updateTripPresetUI();
     updatePackagePresetUI();
@@ -2130,7 +2196,7 @@ function addRow(tableId, defaultDesc = "", defaultPrice = 0, defaultQty = null) 
             <div class="row g-2 align-items-end mt-1">
                 <div class="col">
                     <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Unit Price</label>
-                    <input type="number" class="price form-control form-control-sm" value="${initialPrice}" min="0" step="0.01" oninput="${isPackage ? 'onPackagePriceInput(this); ' : ''}updateInvoice()">
+                    <input type="number" class="price form-control form-control-sm" value="${initialPrice}" min="0" step="0.01" oninput="onItemPriceInput(this, ${isPackage}); updateInvoice()">
                 </div>
                 <div class="col-4">
                     <label class="form-label small fw-bold text-secondary text-uppercase mb-1">Qty</label>
@@ -2267,7 +2333,6 @@ function formatDate(dateString) {
 }
 
 function updateInvoice() {
-    syncChildPackagePrices();
     let currency = document.getElementById("currency").value;
     document.querySelectorAll(".p_currency_lbl").forEach(el => el.innerText = currency);
 
@@ -2595,7 +2660,7 @@ if (tripPaxEl) {
                     if (qtyEl) {
                         qtyEl.value = val;
                     }
-                    if (priceEl) {
+                    if (priceEl && priceEl.dataset.userEdited !== "true") {
                         const dynamicPrice = calculateDynamicAdultPrice(tripName, val, currentCust);
                         if (dynamicPrice !== null) {
                             const converted = getConvertedPrice(dynamicPrice);
@@ -3615,7 +3680,10 @@ function populateFormWithInvoiceData(data) {
                         triggerAutoTranslation(item.desc, true);
                     }
                 }
-                if (p) p.value = item.price || "";
+                if (p) {
+                    p.value = item.price || "";
+                    p.dataset.userEdited = "true";
+                }
                 if (q) q.value = item.qty !== undefined ? item.qty : "1";
             }
         });
@@ -3642,7 +3710,10 @@ function populateFormWithInvoiceData(data) {
                         triggerAutoTranslation(item.desc, true);
                     }
                 }
-                if (p) p.value = item.price || "";
+                if (p) {
+                    p.value = item.price || "";
+                    p.dataset.userEdited = "true";
+                }
                 if (q) q.value = item.qty !== undefined ? item.qty : "1";
             }
         });
