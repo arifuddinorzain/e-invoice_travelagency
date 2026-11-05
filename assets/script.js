@@ -2463,6 +2463,23 @@ function updateInvoice() {
         pTaxRow.style.display = taxEnabled ? "flex" : "none";
     }
 
+    let showVndRemark = document.getElementById("showVndRemark") ? document.getElementById("showVndRemark").checked : false;
+    let vndRemarkInput = document.getElementById("vndRemarkText");
+    if (vndRemarkInput) {
+        vndRemarkInput.disabled = !showVndRemark;
+        if (!showVndRemark) {
+            vndRemarkInput.classList.add("bg-light");
+        } else {
+            vndRemarkInput.classList.remove("bg-light");
+        }
+    }
+    let pVndRemarkRow = document.getElementById("p_vndRemarkRow");
+    if (pVndRemarkRow) {
+        pVndRemarkRow.style.display = showVndRemark ? "block" : "none";
+        const remarkText = (vndRemarkInput ? vndRemarkInput.value : "").trim() || "*Remarks to be paid in Vietnam Dong VND.";
+        pVndRemarkRow.innerText = remarkText;
+    }
+
     let taxInput = document.getElementById("tax");
     if (taxInput) {
         taxInput.disabled = !taxEnabled;
@@ -3037,6 +3054,8 @@ function getInvoiceData() {
         depositPaid: document.getElementById("depositPaid") ? document.getElementById("depositPaid").value : "",
         tax: document.getElementById("tax") ? document.getElementById("tax").value : "8",
         enableTax: document.getElementById("enableTax") ? document.getElementById("enableTax").checked : false,
+        showVndRemark: document.getElementById("showVndRemark") ? Boolean(document.getElementById("showVndRemark").checked) : false,
+        vndRemarkText: document.getElementById("vndRemarkText") ? document.getElementById("vndRemarkText").value : "*Remarks to be paid in Vietnam Dong VND.",
         showBankDetails: document.getElementById("showBankDetails") ? Boolean(document.getElementById("showBankDetails").checked) : true,
         show_bank_details: document.getElementById("showBankDetails") ? Boolean(document.getElementById("showBankDetails").checked) : true,
         approvedByName: document.getElementById("approvedByName") ? document.getElementById("approvedByName").value : "",
@@ -3545,6 +3564,14 @@ function populateFormWithInvoiceData(data) {
     }
     if (document.getElementById("enableTax")) {
         document.getElementById("enableTax").checked = data.enableTax !== undefined ? data.enableTax : true;
+    }
+    if (document.getElementById("showVndRemark")) {
+        document.getElementById("showVndRemark").checked = data.showVndRemark !== undefined ? Boolean(data.showVndRemark) : false;
+    }
+    if (document.getElementById("vndRemarkText")) {
+        if (data.vndRemarkText !== undefined) {
+            document.getElementById("vndRemarkText").value = data.vndRemarkText;
+        }
     }
     if (document.getElementById("showBankDetails")) {
         const hasBankProp = data.showBankDetails !== undefined || data.show_bank_details !== undefined || data.bank_details_enabled !== undefined;
