@@ -41,20 +41,74 @@ const currencyRates = {
 };
 
 // Dynamic Environment & API Base Resolver
+const RENDER_CLOUD_API_BASE = 'https://e-invoice-travelagency.onrender.com/api';
+const LOCAL_DEV_API_BASE = 'http://127.0.0.1:8001/api';
+let _resolvedLocalApiCache = null;
+let _localProbePromise = null;
+
+function isLocalEnvironmentHost() {
+    const host = window.location.hostname;
+    return !host || host === 'localhost' || host === '127.0.0.1' || host === '::1' || window.location.protocol === 'file:';
+}
+
 function getApiBaseUrl() {
     const customEndpoint = (localStorage.getItem('custom_cloud_api') || '').trim();
     if (customEndpoint) {
         return customEndpoint.replace(/\/+$/, '');
     }
 
-    const host = window.location.hostname;
-    const isLocal = !host || host === 'localhost' || host === '127.0.0.1' || host === '::1' || window.location.protocol === 'file:';
-    if (isLocal) {
-        return 'http://127.0.0.1:8001/api';
+    if (isLocalEnvironmentHost()) {
+        return _resolvedLocalApiCache || LOCAL_DEV_API_BASE;
     }
 
     // Live Cloud Backend on Render
-    return 'https://e-invoice-travelagency.onrender.com/api';
+    return RENDER_CLOUD_API_BASE;
+}
+
+async function resolveApiBaseUrl(forceReprobe = false) {
+    const customEndpoint = (localStorage.getItem('custom_cloud_api') || '').trim();
+    if (customEndpoint) {
+        return customEndpoint.replace(/\/+$/, '');
+    }
+
+    if (!isLocalEnvironmentHost()) {
+        return RENDER_CLOUD_API_BASE;
+    }
+
+    if (!forceReprobe && _resolvedLocalApiCache) {
+        return _resolvedLocalApiCache;
+    }
+
+    if (_localProbePromise && !forceReprobe) {
+        return _localProbePromise;
+    }
+
+    _localProbePromise = (async () => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 1200);
+        try {
+            const probeRes = await fetch(`${LOCAL_DEV_API_BASE}/test-db`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                signal: controller.signal
+            });
+            clearTimeout(timer);
+            if (probeRes.ok) {
+                _resolvedLocalApiCache = LOCAL_DEV_API_BASE;
+                return _resolvedLocalApiCache;
+            }
+        } catch (err) {
+            clearTimeout(timer);
+        } finally {
+            _localProbePromise = null;
+        }
+
+        // Fall back to live Render Neon Cloud API when no local backend is listening on port 8001
+        _resolvedLocalApiCache = RENDER_CLOUD_API_BASE;
+        return _resolvedLocalApiCache;
+    })();
+
+    return _localProbePromise;
 }
 
 // API Configuration Modal Logic
@@ -88,7 +142,7 @@ async function testApiConnection() {
 
     let targetUrl = (input.value || '').trim();
     if (!targetUrl) {
-        const defaultBase = getApiBaseUrl();
+        const defaultBase = await resolveApiBaseUrl(true);
         if (!defaultBase) {
             statusBox.className = 'p-2 mb-3 rounded small bg-warning text-dark';
             statusBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> Please enter your live Cloud API URL (e.g., <code>https://your-api.onrender.com/api</code>).';
@@ -122,6 +176,9 @@ function saveApiConfig() {
     const input = document.getElementById('cfgApiBaseUrl');
     if (!input) return;
 
+    _resolvedLocalApiCache = null;
+    _localProbePromise = null;
+
     const url = (input.value || '').trim().replace(/\/+$/, '');
     if (url) {
         localStorage.setItem('custom_cloud_api', url);
@@ -139,6 +196,8 @@ function saveApiConfig() {
 }
 
 function resetApiConfig() {
+    _resolvedLocalApiCache = null;
+    _localProbePromise = null;
     localStorage.removeItem('custom_cloud_api');
     const input = document.getElementById('cfgApiBaseUrl');
     const statusBox = document.getElementById('apiTestStatus');
@@ -169,8 +228,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const saved = localStorage.getItem('analytics_invoices_cache') || sessionStorage.getItem('analytics_invoices_cache');
     if (saved) {
         try {
-            parsedInvoices = JSON.parse(saved);
-            updateDashboard();
+            const rawSaved = JSON.parse(saved);
+            if (Array.isArray(rawSaved)) {
+                parsedInvoices = rawSaved
+                    .map(rec => (rec && typeof rec.normalizedSubtotalMYR === 'number') ? rec : normalizeInvoiceRecord(rec?.raw || rec, rec?.fileName || ''))
+                    .filter(Boolean);
+                populateFilterDropdowns();
+                updateDashboard();
+            }
         } catch (e) {
             console.error(e);
         }
@@ -1519,8 +1584,9 @@ async function deleteSelectedInvoices() {
         }
     });
 
+    let backendSynced = false;
     try {
-        const apiBase = getApiBaseUrl();
+        const apiBase = await resolveApiBaseUrl();
         if (apiBase) {
             const response = await fetch(`${apiBase}/invoices/bulk-delete`, {
                 method: 'POST',
@@ -1534,38 +1600,49 @@ async function deleteSelectedInvoices() {
             if (response.ok) {
                 const resJson = await response.json().catch(() => ({}));
                 console.log("Bulk delete response:", resJson);
+                backendSynced = true;
             } else {
                 console.warn("Bulk delete endpoint returned", response.status, "- falling back to individual deletes");
-                await Promise.allSettled(selectedKeys.map(k => 
+                const results = await Promise.allSettled(selectedKeys.map(k =>
                     fetch(`${apiBase}/invoices/${encodeURIComponent(k)}`, {
                         method: 'DELETE',
                         headers: { 'Accept': 'application/json' }
                     })
                 ));
+                backendSynced = results.every(r => r.status === 'fulfilled' && (r.value.ok || r.value.status === 404));
             }
+        } else {
+            backendSynced = true;
         }
     } catch (err) {
         console.warn("Backend bulk delete error:", err);
-    } finally {
-        // Remove deleted invoices from in-memory records
-        const deletedIdSet = new Set(selectedInvoiceIds);
-        parsedInvoices = parsedInvoices.filter(i => !deletedIdSet.has(i.id) && !deletedIdSet.has(i.invoiceNo) && !deletedIdSet.has(i.backendId));
-        filteredInvoices = filteredInvoices.filter(i => !deletedIdSet.has(i.id) && !deletedIdSet.has(i.invoiceNo) && !deletedIdSet.has(i.backendId));
-
-        // Clear selection
-        selectedInvoiceIds.clear();
-
-        // Save updated state to storage
-        localStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
-        sessionStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
-
-        // Refresh KPIs, charts, and table
-        populateFilterDropdowns();
-        updateDashboard();
-
-        hideLoadingScreen();
-        showToast(`🗑️ ${count} invoice${count > 1 ? 's' : ''} deleted successfully.`, 'success', 3500);
+        backendSynced = false;
     }
+
+    if (!backendSynced) {
+        hideLoadingScreen();
+        showToast("⚠️ Could not delete selected invoices from Neon Cloud DB (server may be waking up). Please retry in a few seconds.", "warning", 7000);
+        return;
+    }
+
+    // Remove deleted invoices from in-memory records
+    const deletedIdSet = new Set(selectedInvoiceIds);
+    parsedInvoices = parsedInvoices.filter(i => !deletedIdSet.has(i.id) && !deletedIdSet.has(i.invoiceNo) && !deletedIdSet.has(i.backendId));
+    filteredInvoices = filteredInvoices.filter(i => !deletedIdSet.has(i.id) && !deletedIdSet.has(i.invoiceNo) && !deletedIdSet.has(i.backendId));
+
+    // Clear selection
+    selectedInvoiceIds.clear();
+
+    // Save updated state to storage
+    localStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
+    sessionStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
+
+    // Refresh KPIs, charts, and table
+    populateFilterDropdowns();
+    updateDashboard();
+
+    hideLoadingScreen();
+    showToast(`🗑️ ${count} invoice${count > 1 ? 's' : ''} deleted from Neon DB.`, 'success', 3500);
 }
 
 // Table Sorting Trigger
@@ -1634,7 +1711,7 @@ async function onInvoiceStatusChange(id, newStatus) {
 
     // Sync status change to Neon DB
     try {
-        const apiBase = getApiBaseUrl();
+        const apiBase = await resolveApiBaseUrl();
         if (apiBase) {
             const updateKey = inv.backendId || inv.invoiceNo || inv.id;
             const res = await fetch(`${apiBase}/invoices/${encodeURIComponent(updateKey)}/status`, {
@@ -1648,7 +1725,7 @@ async function onInvoiceStatusChange(id, newStatus) {
 
             if (res.status === 404 && inv.raw) {
                 // If invoice is not in DB yet, create it with this status
-                await fetch(`${apiBase}/invoices`, {
+                const createRes = await fetch(`${apiBase}/invoices`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1659,10 +1736,16 @@ async function onInvoiceStatusChange(id, newStatus) {
                         status: newStatus
                     })
                 });
+                if (!createRes.ok) {
+                    showToast(`⚠️ Status updated locally, but could not sync ${inv.invoiceNo} to Neon DB.`, "warning", 5000);
+                }
+            } else if (!res.ok) {
+                showToast(`⚠️ Status updated locally, but Neon DB returned ${res.status}.`, "warning", 5000);
             }
         }
     } catch (e) {
         console.warn("Backend status update note:", e);
+        showToast(`⚠️ Status updated locally only — could not reach Neon DB.`, "warning", 5000);
     }
 }
 
@@ -1679,9 +1762,10 @@ async function softDeleteInvoice(id) {
     // Show full-screen locking overlay to block all user interactions
     showLoadingScreen("Deleting Invoice...", `Soft-deleting invoice ${invoiceNo} from Neon Database`);
 
+    let backendSynced = false;
     try {
         // Attempt to soft delete in Neon DB backend if API is configured
-        const apiBase = getApiBaseUrl();
+        const apiBase = await resolveApiBaseUrl();
         if (apiBase) {
             const deleteKey = inv.backendId || inv.invoiceNo || inv.id;
             const response = await fetch(`${apiBase}/invoices/${encodeURIComponent(deleteKey)}`, {
@@ -1690,33 +1774,45 @@ async function softDeleteInvoice(id) {
                     'Accept': 'application/json'
                 }
             });
-            if (response.ok) {
-                const resJson = await response.json().catch(() => ({}));
-                if (resJson.success) {
-                    showToast(`🗑️ ${resJson.message || `Invoice ${invoiceNo} soft deleted from Neon DB.`}`, 'success', 3500);
+            if (response.ok || response.status === 404) {
+                backendSynced = true;
+                if (response.ok) {
+                    const resJson = await response.json().catch(() => ({}));
+                    if (resJson.success) {
+                        showToast(`🗑️ ${resJson.message || `Invoice ${invoiceNo} soft deleted from Neon DB.`}`, 'success', 3500);
+                    }
                 }
             }
+        } else {
+            backendSynced = true;
         }
     } catch (err) {
         console.warn("Backend soft delete notification note:", err);
-    } finally {
-        // Remove from in-memory records
-        parsedInvoices = parsedInvoices.filter(i => i.id !== id);
-        filteredInvoices = filteredInvoices.filter(i => i.id !== id);
-        selectedInvoiceIds.delete(id);
-
-        // Save updated state to storage
-        localStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
-        sessionStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
-
-        // Refresh KPIs, charts, and table
-        populateFilterDropdowns();
-        updateDashboard();
-
-        // Dismiss loading screen and show confirmation
-        hideLoadingScreen();
-        showToast(`Invoice ${invoiceNo} removed from dashboard.`, 'info', 3000);
+        backendSynced = false;
     }
+
+    if (!backendSynced) {
+        hideLoadingScreen();
+        showToast(`⚠️ Could not delete invoice ${invoiceNo} from Neon Cloud DB (server may be waking up). Please retry.`, 'warning', 7000);
+        return;
+    }
+
+    // Remove from in-memory records
+    parsedInvoices = parsedInvoices.filter(i => i.id !== id);
+    filteredInvoices = filteredInvoices.filter(i => i.id !== id);
+    selectedInvoiceIds.delete(id);
+
+    // Save updated state to storage
+    localStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
+    sessionStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
+
+    // Refresh KPIs, charts, and table
+    populateFilterDropdowns();
+    updateDashboard();
+
+    // Dismiss loading screen and show confirmation
+    hideLoadingScreen();
+    showToast(`Invoice ${invoiceNo} removed from dashboard.`, 'info', 3000);
 }
 
 // Detail Modal
@@ -1863,7 +1959,7 @@ async function openInGenerator(id) {
     let rawDraft = inv?.raw ? { ...inv.raw } : null;
 
     try {
-        const apiBase = getApiBaseUrl();
+        const apiBase = await resolveApiBaseUrl();
         if (apiBase) {
             const fetchKey = inv?.backendId || inv?.invoiceNo || id;
             const res = await fetch(`${apiBase}/invoices/${encodeURIComponent(fetchKey)}`, {
@@ -2088,33 +2184,67 @@ function hideLoadingScreen() {
 // SYNC INVOICES FROM LARAVEL + NEON CLOUD DATABASE
 async function syncFromNeonCloud(options = {}) {
     const isAutoSync = options && options.isAutoSync === true;
-    const apiBase = getApiBaseUrl();
+    const silentSuccessToast = options && options.silentSuccessToast === true;
+    const apiBase = await resolveApiBaseUrl();
 
     if (!apiBase) {
         if (!isAutoSync) {
             showToast("Running in Local Client Mode (Browser Storage). Invoices are saved locally.", "info", 5000);
         }
-        return;
+        return false;
     }
-    
+
     if (!isAutoSync) {
         showLoadingScreen("Syncing Invoices...", "Fetching live invoices from Neon PostgreSQL Database");
     }
 
-    try {
+    let wakeTimer = null;
+    if (isAutoSync && apiBase.includes('onrender.com')) {
+        wakeTimer = setTimeout(() => {
+            showToast("Syncing live invoices from Neon DB (Cloud server may be waking up)...", "info", 4500);
+        }, 4500);
+    }
+
+    const fetchInvoicesFromApi = async () => {
         const response = await fetch(`${apiBase}/invoices?per_page=-1`, {
             headers: { "Accept": "application/json" }
         });
-
         const result = await response.json();
+        return { response, result };
+    };
+
+    try {
+        let fetched;
+        try {
+            fetched = await fetchInvoicesFromApi();
+        } catch (firstErr) {
+            if (isAutoSync && apiBase.includes('onrender.com')) {
+                // Retry once after 3s in case Render free tier was waking from sleep
+                await new Promise(r => setTimeout(r, 3000));
+                fetched = await fetchInvoicesFromApi();
+            } else {
+                throw firstErr;
+            }
+        }
+
+        if (wakeTimer) clearTimeout(wakeTimer);
+
+        const { response, result } = fetched;
         const invoiceList = Array.isArray(result.data) ? result.data : (Array.isArray(result) ? result : []);
 
-        if (response.ok && invoiceList.length >= 0) {
+        if (response.ok && Array.isArray(invoiceList)) {
             if (invoiceList.length === 0) {
-                if (!isAutoSync) {
-                    showToast("Connected to database (0 invoices found)", "info", 4000);
+                parsedInvoices = [];
+                filteredInvoices = [];
+                selectedInvoiceIds.clear();
+                localStorage.setItem('analytics_invoices_cache', JSON.stringify([]));
+                sessionStorage.setItem('analytics_invoices_cache', JSON.stringify([]));
+                populateFilterDropdowns();
+                updateDashboard();
+                if (!silentSuccessToast) {
+                    showToast("Connected to Neon DB (0 invoices found).", "info", 4000);
                 }
-                return;
+                return true;
             }
 
             const cloudRecords = invoiceList.map(dbInv => {
@@ -2179,21 +2309,34 @@ async function syncFromNeonCloud(options = {}) {
             populateFilterDropdowns();
             updateDashboard();
 
-            if (isAutoSync) {
-                showToast(`Auto-synced ${cloudRecords.length} live invoices from Neon DB`, "success", 3000);
-            } else {
-                showToast(`Synced ${cloudRecords.length} invoices from Cloud Database!`, "success", 4000);
+            if (!silentSuccessToast) {
+                if (isAutoSync) {
+                    showToast(`Auto-synced ${cloudRecords.length} live invoices from Neon DB`, "success", 3000);
+                } else {
+                    showToast(`Synced ${cloudRecords.length} invoices from Cloud Database!`, "success", 4000);
+                }
             }
-        } else if (!isAutoSync) {
-            if (result.status === 'pending_configuration') {
+            return true;
+        } else {
+            if (result && result.status === 'pending_configuration') {
                 showToast("Database connection pending configuration in backend/.env", "warning", 6000);
+            } else if (isAutoSync) {
+                showToast(
+                    parsedInvoices.length > 0
+                        ? `⚠️ Auto-sync failed (HTTP ${response.status}) — showing cached data. Click 'Sync' to retry.`
+                        : `⚠️ Could not fetch from Cloud DB (HTTP ${response.status}). Click 'Sync' to retry.`,
+                    "warning",
+                    7000
+                );
             } else if (response.status >= 500) {
-                showToast(`Cloud server error (${response.status}): ${result.message || 'Please retry in a moment'}`, "error", 5000);
+                showToast(`Cloud server error (${response.status}): ${(result && result.message) || 'Please retry in a moment'}`, "error", 5000);
             } else {
-                showToast(`Could not fetch from Cloud DB: ${result.message || 'Unknown error'}`, "error", 5000);
+                showToast(`Could not fetch from Cloud DB: ${(result && result.message) || 'Unknown error'}`, "error", 5000);
             }
+            return false;
         }
     } catch (err) {
+        if (wakeTimer) clearTimeout(wakeTimer);
         if (!isAutoSync) {
             console.error("Sync error:", err);
             if (apiBase.includes('onrender.com')) {
@@ -2202,8 +2345,14 @@ async function syncFromNeonCloud(options = {}) {
                 showToast(`Could not connect to API server at ${apiBase}.`, "error", 6000);
             }
         } else {
-            console.log("Auto-sync: API server not reachable on load (may be waking up).");
+            console.warn("Auto-sync failed:", err);
+            if (parsedInvoices.length > 0) {
+                showToast("⚠️ Could not reach Neon Cloud DB — displaying cached invoices which may be outdated. Click 'Sync' to refresh.", "warning", 7500);
+            } else {
+                showToast("⚠️ Could not connect to Neon Cloud DB (server may be waking up). Click 'Sync' to retry.", "warning", 6500);
+            }
         }
+        return false;
     } finally {
         if (!isAutoSync) {
             hideLoadingScreen();
@@ -2225,9 +2374,9 @@ async function uploadAllToNeonCloud() {
         uploadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-1"></i> Saving...';
     }
 
-    showLoadingScreen("Saving Invoices...", `Pushing ${parsedInvoices.length} invoices to Neon PostgreSQL Database`);
+    showLoadingScreen("Saving Invoices...", `Preparing ${parsedInvoices.length} invoices for Neon PostgreSQL Database`);
 
-    const apiBase = getApiBaseUrl();
+    const apiBase = await resolveApiBaseUrl();
     if (!apiBase) {
         localStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
         sessionStorage.setItem('analytics_invoices_cache', JSON.stringify(parsedInvoices));
@@ -2240,56 +2389,125 @@ async function uploadAllToNeonCloud() {
         return;
     }
 
-    const payload = parsedInvoices.map(inv => inv.raw || {
-        invoiceNo: inv.invoiceNo,
-        invoiceDate: inv.invoiceDate,
-        dueDate: inv.dueDate,
-        companyName: inv.companyName,
-        customerName: inv.customerName,
-        tripName: inv.tripName,
-        tripDate: inv.tripDate,
-        tripPax: inv.pax,
-        tripConsultant: inv.tripConsultant,
-        currency: inv.currency,
-        exchangeRate: inv.exchangeRate,
-        subtotal: inv.subtotal,
-        depositPaid: inv.depositPaid,
-        grandTotal: inv.subtotal,
-        showBankDetails: inv.showBankDetails !== undefined ? inv.showBankDetails : true
+    const payload = parsedInvoices.map(inv => {
+        const baseObj = inv.raw ? { ...inv.raw } : {
+            invoiceNo: inv.invoiceNo,
+            invoiceDate: inv.invoiceDate,
+            dueDate: inv.dueDate,
+            companyName: inv.companyName,
+            customerName: inv.customerName,
+            tripName: inv.tripName,
+            tripDate: inv.tripDate,
+            tripPax: inv.pax,
+            tripConsultant: inv.tripConsultant,
+            currency: inv.currency,
+            exchangeRate: inv.exchangeRate,
+            subtotal: inv.subtotal,
+            depositPaid: inv.depositPaid,
+            grandTotal: inv.subtotal
+        };
+        return {
+            ...baseObj,
+            status: inv.status || baseObj.status || 'unpaid',
+            showBankDetails: inv.showBankDetails !== undefined ? inv.showBankDetails : (baseObj.showBankDetails !== undefined ? baseObj.showBankDetails : true)
+        };
     });
 
+    const CHUNK_SIZE = 8;
+    const totalRequested = payload.length;
+    const totalBatches = Math.ceil(totalRequested / CHUNK_SIZE);
+    let totalImported = 0;
+    let totalFailed = 0;
+    const allErrors = [];
+    let pendingConfigDetected = false;
+
     try {
-        const response = await fetch(`${apiBase}/invoices/bulk`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            body: JSON.stringify({ invoices: payload })
-        });
+        for (let b = 0; b < totalBatches; b++) {
+            const start = b * CHUNK_SIZE;
+            const chunk = payload.slice(start, start + CHUNK_SIZE);
+            const end = start + chunk.length;
+            showLoadingScreen(
+                "Saving Invoices...",
+                `Uploading batch ${b + 1} of ${totalBatches} (invoices ${start + 1}–${end} of ${totalRequested}) to Neon DB`
+            );
 
-        let result = {};
-        try {
-            result = await response.json();
-        } catch (e) {
-            result = { message: response.statusText || 'Server error' };
+            try {
+                const response = await fetch(`${apiBase}/invoices/bulk`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
+                    },
+                    body: JSON.stringify({ invoices: chunk })
+                });
+
+                let result = {};
+                try {
+                    result = await response.json();
+                } catch (e) {
+                    result = { message: response.statusText || 'Server error' };
+                }
+
+                if (result && result.status === 'pending_configuration') {
+                    pendingConfigDetected = true;
+                    break;
+                }
+
+                if (response.ok) {
+                    const batchErrors = Array.isArray(result.errors) ? result.errors : [];
+                    const hasExplicitFailed = (typeof result.failed_count === 'number');
+                    const batchImported = (typeof result.imported_count === 'number')
+                        ? result.imported_count
+                        : (result.success ? chunk.length : 0);
+                    const batchFailed = hasExplicitFailed
+                        ? result.failed_count
+                        : (result.success ? batchErrors.length : Math.max(chunk.length - batchImported, batchErrors.length || chunk.length));
+
+                    totalImported += batchImported;
+                    totalFailed += batchFailed;
+                    if (batchErrors.length > 0) {
+                        allErrors.push(...batchErrors);
+                    } else if (!result.success && batchFailed > 0) {
+                        allErrors.push(result.message || `Batch ${b + 1} error`);
+                    }
+                } else {
+                    totalFailed += chunk.length;
+                    const errText = (result && result.message) ? result.message : `HTTP ${response.status}`;
+                    allErrors.push(`Batch ${b + 1}: ${errText}`);
+                }
+            } catch (chunkErr) {
+                console.error(`Bulk upload batch ${b + 1} error:`, chunkErr);
+                totalFailed += chunk.length;
+                allErrors.push(`Batch ${b + 1}: ${chunkErr.message || 'Network/Timeout error'}`);
+            }
         }
 
-        if (response.ok && result.success) {
-            showToast(`✅ ${result.imported_count} invoices saved to Neon PostgreSQL Database!`, "success", 5000);
-        } else if (result.status === 'pending_configuration') {
+        if (pendingConfigDetected) {
             showToast("Database connection pending configuration in backend/.env", "warning", 6000);
-        } else if (response.status >= 500) {
-            showToast(`❌ Cloud server error (${response.status}): ${result.message || 'Please retry in a moment'}`, "error", 6000);
-        } else {
-            showToast(`❌ Bulk upload error: ${result.message || 'Unknown error'}`, "error", 5000);
+            return;
         }
-    } catch (err) {
-        console.error("Bulk upload error:", err);
-        if (apiBase.includes('onrender.com')) {
+
+        // Re-sync from Neon DB whenever any record saved so browser cache & totals stay 100% identical to DB
+        if (totalImported > 0) {
+            showLoadingScreen("Verifying Sync...", "Refreshing live invoices from Neon PostgreSQL Database");
+            await syncFromNeonCloud({ isAutoSync: true, silentSuccessToast: true });
+        }
+
+        if (totalFailed === 0 && totalImported > 0) {
+            showToast(`✅ All ${totalImported} invoice(s) saved & synced with Neon PostgreSQL Database!`, "success", 5000);
+        } else if (totalImported > 0 && totalFailed > 0) {
+            console.error("Partial bulk upload failures:", allErrors);
+            const errPreview = allErrors.slice(0, 2).join(' | ');
+            showToast(
+                `⚠️ Saved ${totalImported} of ${totalRequested} invoices to Neon DB (${totalFailed} failed${errPreview ? ': ' + errPreview : ''}). Dashboard synced with database.`,
+                "warning",
+                10000
+            );
+        } else if (apiBase.includes('onrender.com') && allErrors.some(e => /network|fetch|timeout/i.test(e))) {
             showToast("Cloud server is waking up (takes ~30s on Render free tier). Please retry in a few seconds.", "warning", 8000);
         } else {
-            showToast(`Could not connect to API server at ${apiBase}.`, "error", 6000);
+            console.error("Bulk upload failed:", allErrors);
+            showToast(`❌ Failed to save invoices: ${allErrors.slice(0, 2).join(' | ') || 'Unknown error'}`, "error", 7000);
         }
     } finally {
         hideLoadingScreen();

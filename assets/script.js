@@ -3152,20 +3152,74 @@ function saveInvoice() {
 }
 
 // Dynamic Environment & API Base Resolver
+const RENDER_CLOUD_API_BASE = 'https://e-invoice-travelagency.onrender.com/api';
+const LOCAL_DEV_API_BASE = 'http://127.0.0.1:8001/api';
+let _resolvedLocalApiCache = null;
+let _localProbePromise = null;
+
+function isLocalEnvironmentHost() {
+    const host = window.location.hostname;
+    return !host || host === 'localhost' || host === '127.0.0.1' || host === '::1' || window.location.protocol === 'file:';
+}
+
 function getApiBaseUrl() {
     const customEndpoint = (localStorage.getItem('custom_cloud_api') || '').trim();
     if (customEndpoint) {
         return customEndpoint.replace(/\/+$/, '');
     }
 
-    const host = window.location.hostname;
-    const isLocal = !host || host === 'localhost' || host === '127.0.0.1' || host === '::1' || window.location.protocol === 'file:';
-    if (isLocal) {
-        return 'http://127.0.0.1:8001/api';
+    if (isLocalEnvironmentHost()) {
+        return _resolvedLocalApiCache || LOCAL_DEV_API_BASE;
     }
 
     // Live Cloud Backend on Render
-    return 'https://e-invoice-travelagency.onrender.com/api';
+    return RENDER_CLOUD_API_BASE;
+}
+
+async function resolveApiBaseUrl(forceReprobe = false) {
+    const customEndpoint = (localStorage.getItem('custom_cloud_api') || '').trim();
+    if (customEndpoint) {
+        return customEndpoint.replace(/\/+$/, '');
+    }
+
+    if (!isLocalEnvironmentHost()) {
+        return RENDER_CLOUD_API_BASE;
+    }
+
+    if (!forceReprobe && _resolvedLocalApiCache) {
+        return _resolvedLocalApiCache;
+    }
+
+    if (_localProbePromise && !forceReprobe) {
+        return _localProbePromise;
+    }
+
+    _localProbePromise = (async () => {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 1200);
+        try {
+            const probeRes = await fetch(`${LOCAL_DEV_API_BASE}/test-db`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                signal: controller.signal
+            });
+            clearTimeout(timer);
+            if (probeRes.ok) {
+                _resolvedLocalApiCache = LOCAL_DEV_API_BASE;
+                return _resolvedLocalApiCache;
+            }
+        } catch (err) {
+            clearTimeout(timer);
+        } finally {
+            _localProbePromise = null;
+        }
+
+        // Fall back to live Render Neon Cloud API when no local backend is listening on port 8001
+        _resolvedLocalApiCache = RENDER_CLOUD_API_BASE;
+        return _resolvedLocalApiCache;
+    })();
+
+    return _localProbePromise;
 }
 
 // API Configuration Modal Logic
@@ -3199,7 +3253,7 @@ async function testApiConnection() {
 
     let targetUrl = (input.value || '').trim();
     if (!targetUrl) {
-        const defaultBase = getApiBaseUrl();
+        const defaultBase = await resolveApiBaseUrl(true);
         if (!defaultBase) {
             statusBox.className = 'p-2 mb-3 rounded small bg-warning text-dark';
             statusBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> Please enter your live Cloud API URL (e.g., <code>https://your-api.onrender.com/api</code>).';
@@ -3233,6 +3287,9 @@ function saveApiConfig() {
     const input = document.getElementById('cfgApiBaseUrl');
     if (!input) return;
 
+    _resolvedLocalApiCache = null;
+    _localProbePromise = null;
+
     const url = (input.value || '').trim().replace(/\/+$/, '');
     if (url) {
         localStorage.setItem('custom_cloud_api', url);
@@ -3245,6 +3302,8 @@ function saveApiConfig() {
 }
 
 function resetApiConfig() {
+    _resolvedLocalApiCache = null;
+    _localProbePromise = null;
     localStorage.removeItem('custom_cloud_api');
     const input = document.getElementById('cfgApiBaseUrl');
     const statusBox = document.getElementById('apiTestStatus');
@@ -3313,7 +3372,7 @@ async function saveToNeonCloud() {
 
     showLoadingScreen("Saving Invoice...", `Saving ${data.invoiceNo || 'invoice draft'} to Neon Cloud Database`);
 
-    const apiBase = getApiBaseUrl();
+    const apiBase = await resolveApiBaseUrl();
     if (!apiBase) {
         // Fallback: save to localStorage cache so work is never lost on live static demo
         try {
@@ -3360,12 +3419,18 @@ async function saveToNeonCloud() {
                         if (Array.isArray(cacheList)) {
                             const invKey = data.invoiceNo || '';
                             const matchIdx = cacheList.findIndex(i => invKey && (i.id === invKey || i.invoiceNo === invKey || (i.raw && i.raw.invoiceNo === invKey)));
+                            const resolvedInvNo = (result.data && result.data.invoice_no) ? result.data.invoice_no : invKey;
                             const normalized = {
                                 ...data,
-                                id: invKey || ('INV-' + Date.now()),
-                                invoiceNo: invKey,
+                                backendId: (result.data && result.data.id) ? result.data.id : data.backendId,
+                                id: resolvedInvNo || ('INV-' + Date.now()),
+                                invoiceNo: resolvedInvNo,
                                 showBankDetails: Boolean(data.showBankDetails),
-                                raw: data
+                                raw: {
+                                    ...data,
+                                    backendId: (result.data && result.data.id) ? result.data.id : data.backendId,
+                                    invoiceNo: resolvedInvNo
+                                }
                             };
                             if (matchIdx !== -1) {
                                 cacheList[matchIdx] = {

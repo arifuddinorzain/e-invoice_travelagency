@@ -141,8 +141,8 @@ class InvoiceController extends Controller
         }
 
         $invoiceNo = trim($data['invoiceNo'] ?? $data['invoice_no'] ?? '');
-        if (empty($invoiceNo)) {
-            $invoiceNo = 'INV-' . date('Ymd') . '-' . rand(100, 999);
+        if (empty($invoiceNo) || strtoupper($invoiceNo) === 'N/A') {
+            $invoiceNo = 'INV-' . date('Ymd') . '-' . substr(uniqid('', true), -4) . rand(10, 99);
         }
 
         $currency = $data['currency'] ?? 'RM';
@@ -200,71 +200,86 @@ class InvoiceController extends Controller
 
         DB::beginTransaction();
         try {
-            $invoice = Invoice::updateOrCreate(
-                ['invoice_no' => $invoiceNo],
-                [
-                    'invoice_date' => $invoiceDate,
-                    'due_date' => $dueDate,
-                    'company_name' => $data['companyName'] ?? $data['company_name'] ?? 'SELAMATVN TOUR AND TRAVEL',
-                    'company_address' => $data['companyAddress'] ?? $data['company_address'] ?? null,
-                    'company_phone' => $data['companyPhone'] ?? $data['company_phone'] ?? null,
-                    'company_email' => $data['companyEmail'] ?? $data['company_email'] ?? null,
-                    'company_license' => $data['companyLicense'] ?? $data['company_license'] ?? null,
-                    'company_website' => $data['companyWebsite'] ?? $data['company_website'] ?? null,
-                    'customer_name' => $data['customerName'] ?? $data['customer_name'] ?? 'Customer',
-                    'customer_address' => $data['customerAddress'] ?? $data['customer_address'] ?? null,
-                    'customer_social' => $data['customerSocial'] ?? $data['customer_social'] ?? null,
-                    'trip_name' => $data['tripName'] ?? $data['trip_name'] ?? 'Vietnam Tour',
-                    'trip_date' => $data['tripDate'] ?? $data['trip_date'] ?? null,
-                    'trip_consultant' => $data['tripConsultant'] ?? $data['trip_consultant'] ?? 'General Sales',
-                    'trip_pax' => $totalPax,
-                    'group_size' => $data['groupSize'] ?? $data['group_size'] ?? null,
-                    'payment_terms' => $data['paymentTerms'] ?? $data['payment_terms'] ?? 'FULL PAYMENT',
-                    'payment_mode' => $data['paymentMode'] ?? $data['payment_mode'] ?? 'ONLINE BANKING',
-                    'currency' => $currency,
-                    'exchange_rate' => $exchangeRate,
-                    'subtotal' => $subtotal,
-                    'deposit_paid' => $depositPaid,
-                    'balance_due' => $balanceDue,
-                    'tax_percent' => (float) ($data['tax'] ?? $data['tax_percent'] ?? 0),
-                    'tax_enabled' => (bool) ($data['enableTax'] ?? $data['tax_enabled'] ?? false),
-                    'show_bank_details' => (function() use ($data) {
-                        $raw = $data['showBankDetails'] ?? $data['show_bank_details'] ?? $data['bank_details_enabled'] ?? null;
-                        if ($raw === null) return true;
+            $attributes = [
+                'invoice_date' => $invoiceDate,
+                'due_date' => $dueDate,
+                'company_name' => $data['companyName'] ?? $data['company_name'] ?? 'SELAMATVN TOUR AND TRAVEL',
+                'company_address' => $data['companyAddress'] ?? $data['company_address'] ?? null,
+                'company_phone' => $data['companyPhone'] ?? $data['company_phone'] ?? null,
+                'company_email' => $data['companyEmail'] ?? $data['company_email'] ?? null,
+                'company_license' => $data['companyLicense'] ?? $data['company_license'] ?? null,
+                'company_website' => $data['companyWebsite'] ?? $data['company_website'] ?? null,
+                'customer_name' => $data['customerName'] ?? $data['customer_name'] ?? 'Customer',
+                'customer_address' => $data['customerAddress'] ?? $data['customer_address'] ?? null,
+                'customer_social' => $data['customerSocial'] ?? $data['customer_social'] ?? null,
+                'trip_name' => $data['tripName'] ?? $data['trip_name'] ?? 'Vietnam Tour',
+                'trip_date' => $data['tripDate'] ?? $data['trip_date'] ?? null,
+                'trip_consultant' => $data['tripConsultant'] ?? $data['trip_consultant'] ?? 'General Sales',
+                'trip_pax' => $totalPax,
+                'group_size' => $data['groupSize'] ?? $data['group_size'] ?? null,
+                'payment_terms' => $data['paymentTerms'] ?? $data['payment_terms'] ?? 'FULL PAYMENT',
+                'payment_mode' => $data['paymentMode'] ?? $data['payment_mode'] ?? 'ONLINE BANKING',
+                'currency' => $currency,
+                'exchange_rate' => $exchangeRate,
+                'subtotal' => $subtotal,
+                'deposit_paid' => $depositPaid,
+                'balance_due' => $balanceDue,
+                'tax_percent' => (float) ($data['tax'] ?? $data['tax_percent'] ?? 0),
+                'tax_enabled' => (bool) ($data['enableTax'] ?? $data['tax_enabled'] ?? false),
+                'show_bank_details' => (function() use ($data) {
+                    $raw = $data['showBankDetails'] ?? $data['show_bank_details'] ?? $data['bank_details_enabled'] ?? null;
+                    if ($raw === null) return true;
+                    $b = filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+                    return $b !== null ? $b : ($raw === true || $raw === 1 || $raw === '1' || $raw === 'true');
+                })(),
+                'status' => $status,
+                'approved_by' => $data['approvedByName'] ?? $data['approved_by'] ?? null,
+                'package_includes' => $data['packageIncludes'] ?? $data['package_includes'] ?? null,
+                'items_data' => $items,
+                'addons_data' => $addons,
+                'raw_draft' => (function() use ($data) {
+                    $raw = $data['showBankDetails'] ?? $data['show_bank_details'] ?? $data['bank_details_enabled'] ?? null;
+                    $bankBool = true;
+                    if ($raw !== null) {
                         $b = filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-                        return $b !== null ? $b : ($raw === true || $raw === 1 || $raw === '1' || $raw === 'true');
-                    })(),
-                    'status' => $status,
-                    'approved_by' => $data['approvedByName'] ?? $data['approved_by'] ?? null,
-                    'package_includes' => $data['packageIncludes'] ?? $data['package_includes'] ?? null,
-                    'items_data' => $items,
-                    'addons_data' => $addons,
-                    'raw_draft' => (function() use ($data) {
-                        $raw = $data['showBankDetails'] ?? $data['show_bank_details'] ?? $data['bank_details_enabled'] ?? null;
-                        $bankBool = true;
-                        if ($raw !== null) {
-                            $b = filter_var($raw, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-                            $bankBool = $b !== null ? $b : ($raw === true || $raw === 1 || $raw === '1' || $raw === 'true');
-                        }
-                        return array_merge($data, [
-                            'showBankDetails' => $bankBool,
-                            'show_bank_details' => $bankBool,
-                        ]);
-                    })()
-                ]
-            );
+                        $bankBool = $b !== null ? $b : ($raw === true || $raw === 1 || $raw === '1' || $raw === 'true');
+                    }
+                    return array_merge($data, [
+                        'showBankDetails' => $bankBool,
+                        'show_bank_details' => $bankBool,
+                    ]);
+                })()
+            ];
+
+            // Include soft-deleted rows so re-importing a previously deleted invoice_no restores and updates it
+            $invoice = Invoice::withTrashed()->where('invoice_no', $invoiceNo)->first();
+            if ($invoice) {
+                if ($invoice->trashed()) {
+                    $invoice->restore();
+                }
+                $invoice->fill($attributes);
+                $invoice->save();
+            } else {
+                $invoice = Invoice::create(array_merge(['invoice_no' => $invoiceNo], $attributes));
+            }
 
             // Sync item rows
             $invoice->items()->delete();
 
+            $clipText = function ($val, int $maxLen = 250) {
+                $str = (string) $val;
+                return function_exists('mb_substr') ? mb_substr($str, 0, $maxLen) : substr($str, 0, $maxLen);
+            };
+
             foreach ($items as $item) {
                 $p = (float) str_replace(',', '', $item['price'] ?? 0);
                 $q = (int) ($item['qty'] ?? $item['quantity'] ?? 1);
+                $rawVi = $item['viDesc'] ?? $item['vi_description'] ?? null;
                 InvoiceItem::create([
                     'invoice_id' => $invoice->id,
                     'type' => 'package',
-                    'description' => $item['desc'] ?? $item['description'] ?? 'Package Item',
-                    'vi_description' => $item['viDesc'] ?? $item['vi_description'] ?? null,
+                    'description' => $clipText($item['desc'] ?? $item['description'] ?? 'Package Item'),
+                    'vi_description' => ($rawVi !== null && $rawVi !== '') ? $clipText($rawVi) : null,
                     'quantity' => $q,
                     'unit_price' => $p,
                     'total_amount' => $p * $q,
@@ -274,11 +289,12 @@ class InvoiceController extends Controller
             foreach ($addons as $addon) {
                 $p = (float) str_replace(',', '', $addon['price'] ?? 0);
                 $q = (int) ($addon['qty'] ?? $addon['quantity'] ?? 1);
+                $rawVi = $addon['viDesc'] ?? $addon['vi_description'] ?? null;
                 InvoiceItem::create([
                     'invoice_id' => $invoice->id,
                     'type' => 'addon',
-                    'description' => $addon['desc'] ?? $addon['description'] ?? 'Add-on Service',
-                    'vi_description' => $addon['viDesc'] ?? $addon['vi_description'] ?? null,
+                    'description' => $clipText($addon['desc'] ?? $addon['description'] ?? 'Add-on Service'),
+                    'vi_description' => ($rawVi !== null && $rawVi !== '') ? $clipText($rawVi) : null,
                     'quantity' => $q,
                     'unit_price' => $p,
                     'total_amount' => $p * $q,
@@ -292,7 +308,7 @@ class InvoiceController extends Controller
                 'message' => 'Invoice saved to Neon database successfully!',
                 'data' => $invoice->load('items')
             ], 201);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('Error saving invoice: ' . $e->getMessage());
             return response()->json([
@@ -441,31 +457,64 @@ class InvoiceController extends Controller
      */
     public function bulkImport(Request $request)
     {
-        $invoices = $request->input('invoices', []);
-        if (empty($invoices)) {
-            return response()->json(['message' => 'No invoices provided'], 400);
+        $rawJson = json_decode($request->getContent(), true) ?: [];
+        $invoices = $request->input('invoices') ?? $request->json('invoices') ?? ($rawJson['invoices'] ?? []);
+        if (empty($invoices) || !is_array($invoices)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No invoices provided'
+            ], 400);
         }
 
+        $totalRequested = count($invoices);
         $savedCount = 0;
+        $failedCount = 0;
         $errors = [];
 
-        foreach ($invoices as $invData) {
+        foreach ($invoices as $index => $invData) {
+            if (!is_array($invData)) {
+                $failedCount++;
+                $errors[] = "Item #" . ($index + 1) . ": Invalid invoice payload";
+                continue;
+            }
+
+            $invLabel = trim((string) ($invData['invoiceNo'] ?? $invData['invoice_no'] ?? ("Item #" . ($index + 1))));
+
             try {
                 $req = new Request();
                 $req->replace($invData);
-                $this->store($req);
-                $savedCount++;
-            } catch (\Exception $e) {
-                $errors[] = $e->getMessage();
+                $res = $this->store($req);
+
+                $statusCode = method_exists($res, 'getStatusCode') ? $res->getStatusCode() : 500;
+                $resData = method_exists($res, 'getData') ? $res->getData(true) : [];
+
+                if ($statusCode >= 200 && $statusCode < 300 && !empty($resData['success'])) {
+                    $savedCount++;
+                } else {
+                    $failedCount++;
+                    $errMsg = $resData['message'] ?? "HTTP {$statusCode} error";
+                    $errors[] = "{$invLabel}: {$errMsg}";
+                }
+            } catch (\Throwable $e) {
+                $failedCount++;
+                $errors[] = "{$invLabel}: " . $e->getMessage();
             }
         }
 
+        $allSucceeded = ($failedCount === 0 && $savedCount > 0);
+        $httpStatus = ($savedCount === 0 && $failedCount > 0) ? 500 : 200;
+
         return response()->json([
-            'success' => true,
+            'success' => $allSucceeded,
+            'partial' => ($savedCount > 0 && $failedCount > 0),
+            'total_requested' => $totalRequested,
             'imported_count' => $savedCount,
+            'failed_count' => $failedCount,
             'errors' => $errors,
-            'message' => "Successfully imported {$savedCount} invoices into Neon DB!"
-        ]);
+            'message' => $allSucceeded
+                ? "Successfully imported {$savedCount} invoices into Neon DB!"
+                : "Imported {$savedCount} of {$totalRequested} invoices. {$failedCount} failed."
+        ], $httpStatus);
     }
 
     /**
